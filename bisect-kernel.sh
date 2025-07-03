@@ -209,14 +209,15 @@ do_install_commit() {
             ./scripts/config -e "$_opt"
         done
 
+        ./scripts/config --set-str CONFIG_LOCALVERSION "${BISECT_VERSION_TAG}"
         if ! yes $'\n' | make -j"${MAKE_JOBS}" > "${STATE_DIR}/build.log" 2>&1; then
             do_abort "Build failed for commit ${commit_to_install}."
         fi
         log "Installing kernel..."
-        if ! make LOCALVERSION="${BISECT_VERSION_TAG}" modules_install install >> "${STATE_DIR}/build.log" 2>&1; then
+        if ! make modules_install install >> "${STATE_DIR}/build.log" 2>&1; then
             do_abort "Install failed for commit ${commit_to_install}."
         fi
-        kernel_version_string="$(make -s kernelrelease)${BISECT_VERSION_TAG}"
+        kernel_version_string="$(make kernelrelease)"
     fi
     
     local new_kernel_path="/boot/vmlinuz-${kernel_version_string}"
