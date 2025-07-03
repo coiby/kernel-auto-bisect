@@ -126,7 +126,6 @@ do_install_commit() {
         local core_url=$(cat kernel_url)
         local base_url=$(dirname "$core_url")
         local release=$(cat kernel_release)
-        local arch=$(echo "$core_url" | rev | cut -d. -f2 | rev)
 
         local rpm_cache_dir="$RPM_CACHE_DIR"
         if [ -z "$rpm_cache_dir" ]; then do_abort "RPM_CACHE_DIR is not set in the configuration."; fi
@@ -135,7 +134,7 @@ do_install_commit() {
         log "Ensuring RPMs for kernel ${release} are in cache: ${rpm_cache_dir}"
         local rpms_to_install=()
         for pkg in kernel-core kernel-modules kernel-modules-core kernel; do
-            local rpm_filename="${pkg}-${release}.${arch}.rpm"
+            local rpm_filename="${pkg}-${release}.rpm"
             local rpm_path="${rpm_cache_dir}/${rpm_filename}"
             local rpm_url="${base_url}/${rpm_filename}"
 
