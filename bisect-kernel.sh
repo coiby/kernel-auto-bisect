@@ -279,6 +279,7 @@ do_test() {
 preapre_reboot() {
     # try to reboot to current EFI bootloader entry next time
     command -v rstrnt-prepare-reboot &> /dev/null && rstrnt-prepare-reboot
+    sync
 }
 
 bisect_panic() {
