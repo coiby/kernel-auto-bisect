@@ -191,7 +191,7 @@ do_install_commit() {
         repo_dir="$KERNEL_SRC_DIR"
         log "--- Phase: BUILD for commit ${commit_to_install} ---"
         cd "$repo_dir"
-        git checkout master; git clean -fdx
+        git clean -fdx
         git checkout -q "$commit_to_install"
 
         yes '' | make localmodconfig
@@ -241,7 +241,7 @@ do_bisect_install() {
     if ! git bisect log > /dev/null 2>&1; then
         log "Verification complete. Starting git bisect process."
         git bisect reset || true
-        if [[ "$BISECT_MODE" == "git" ]]; then git checkout master; git clean -fdx; fi
+        if [[ "$BISECT_MODE" == "git" ]]; then git clean -fdx; fi
         git bisect start "$(cat ${STATE_DIR}/bad_ref)" "$(cat ${STATE_DIR}/good_ref)"
     fi
 
