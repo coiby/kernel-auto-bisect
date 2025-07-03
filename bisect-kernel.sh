@@ -119,9 +119,8 @@ do_install_commit() {
     local kernel_version_string
 
     if [[ "$BISECT_MODE" == "rpm" ]]; then
-        repo_dir="$RPM_FAKE_REPO_PATH"
         log "--- Phase: INSTALL RPM for commit ${commit_to_install} ---"
-        cd "$repo_dir"
+        cd "$RPM_FAKE_REPO_PATH"
         git checkout -q "$commit_to_install"
         
         local core_url=$(cat kernel_url)
@@ -129,18 +128,33 @@ do_install_commit() {
         local release=$(cat kernel_release)
         local arch=$(echo "$core_url" | rev | cut -d. -f2 | rev)
 
-        log "Downloading RPMs for kernel ${release}"
-        local rpm_dir=$(mktemp -d)
-        # Add more RPMs here if needed (e.g., kernel-devel)
+        local rpm_cache_dir="$RPM_CACHE_DIR"
+        if [ -z "$rpm_cache_dir" ]; then do_abort "RPM_CACHE_DIR is not set in the configuration."; fi
+        mkdir -p "$rpm_cache_dir"
+
+        log "Ensuring RPMs for kernel ${release} are in cache: ${rpm_cache_dir}"
+        local rpms_to_install=()
         for pkg in kernel-core kernel-modules kernel; do
-            wget -q -P "$rpm_dir" "${base_url}/${pkg}-${release}.${arch}.rpm"
+            local rpm_filename="${pkg}-${release}.${arch}.rpm"
+            local rpm_path="${rpm_cache_dir}/${rpm_filename}"
+            local rpm_url="${base_url}/${rpm_filename}"
+
+            if [ ! -f "$rpm_path" ]; then
+                log "Downloading ${rpm_filename}..."
+                if ! wget -q -O "$rpm_path" "$rpm_url"; then
+                    rm -f "$rpm_path" # Cleanup partial download on failure
+                    do_abort "Failed to download ${rpm_url}."
+                fi
+            else
+                log "Found ${rpm_filename} in cache."
+            fi
+            rpms_to_install+=("$rpm_path")
         done
 
-        log "Installing RPMs from ${rpm_dir}"
-        if ! dnf install -y "$rpm_dir"/*.rpm > "${STATE_DIR}/install.log" 2>&1; then
+        log "Installing RPMs for ${release}"
+        if ! dnf install -y "${rpms_to_install[@]}" > "${STATE_DIR}/install.log" 2>&1; then
             do_abort "Failed to install RPMs for ${release}."
         fi
-        rm -rf "$rpm_dir"
         kernel_version_string="$release"
     else # git mode
         repo_dir="$KERNEL_SRC_DIR"
