@@ -378,13 +378,13 @@ handle_phase() {
     local CURRENT_PHASE=$(cat "$STATE_FILE_PHASE")
     log "Detected phase: ${CURRENT_PHASE}"
 
-    current_kernel=vmlinuz-$(uname -r)
+    current_kernel=$(uname -r)
     case "$CURRENT_PHASE" in
         VERIFY_GOOD_BUILD) do_install_commit "$(cat ${STATE_DIR}/good_ref)" "VERIFY_GOOD_TEST" ;;
         VERIFY_BAD_BUILD) do_install_commit "$(cat ${STATE_DIR}/bad_ref)" "VERIFY_BAD_TEST" ;;
         BUILD) do_bisect_install ;;
         TEST | VERIFY_GOOD_TEST | VERIFY_BAD_TEST)
-            if [[ "$current_kernel" != "$(basename $(cat ${STATE_DIR}/original_kernel))" ]]; then
+            if [[ "$current_kernel" == "$(cat ${LAST_KERNEL_FILE})" ]]; then
                 do_test
             else
                 log "In a TEST phase but not on a test kernel. Waiting for reboot."
