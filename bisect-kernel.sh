@@ -141,7 +141,7 @@ do_install_commit() {
 
             if [ ! -f "$rpm_path" ]; then
                 log "Downloading ${rpm_filename}..."
-                if ! wget -q -O "$rpm_path" "$rpm_url"; then
+                if ! wget --no-check-certificate -q -O "$rpm_path" "$rpm_url"; then
                     rm -f "$rpm_path" # Cleanup partial download on failure
                     do_abort "Failed to download ${rpm_url}."
                 fi
