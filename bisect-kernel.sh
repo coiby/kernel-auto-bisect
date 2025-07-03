@@ -2,7 +2,7 @@
 #
 # bisect-kernel.sh: Main orchestrator for reboot-based kernel bisection.
 # Supports bisection from a git source tree or a list of RPMs.
-#
+# Automatically cleans up tested kernels to save space in /boot.
 
 set -e # Exit immediately if a command exits with a non-zero status.
 
@@ -14,6 +14,7 @@ LOG_FILE="${STATE_DIR}/bisect.log"
 STATE_FILE_PHASE="${STATE_DIR}/phase"
 RUN_COUNT_FILE="${STATE_DIR}/run_count"
 PANIC_FLAG_FILE="${STATE_DIR}/panic_flag"
+LAST_KERNEL_FILE="${STATE_DIR}/last_tested_kernel_version"
 
 # --- Load Config ---
 if [ ! -f "$CONFIG_FILE" ]; then
@@ -36,11 +37,37 @@ set_boot_kernel() { log "Setting default boot kernel to: $1"; grubby --set-defau
 get_current_kernel_path() { grubby --info=/boot/vmlinuz-$(uname -r) | grep -E "^kernel=" | sed 's/kernel=//;s/"//g'; }
 
 # --- Bisection Helper Functions ---
+remove_last_kernel() {
+    if [ ! -f "$LAST_KERNEL_FILE" ]; then return; fi
+
+    local kernel_to_remove=$(cat "$LAST_KERNEL_FILE")
+    # Safety check: never remove the running kernel
+    if [[ -z "$kernel_to_remove" ]] || [[ "$(uname -r)" == "$kernel_to_remove" ]]; then
+        log "WARNING: Skipping removal of last kernel, as it is running or undefined."
+        rm -f "$LAST_KERNEL_FILE"
+        return
+    fi
+
+    log "Removing previously tested kernel: ${kernel_to_remove}"
+    if [[ "$BISECT_MODE" == "rpm" ]]; then
+        # RPMs are managed by dnf
+        dnf remove -y "kernel-core-${kernel_to_remove}" "kernel-modules-${kernel_to_remove}" "kernel-${kernel_to_remove}" > /dev/null 2>&1 || log "Failed to remove kernel RPMs for ${kernel_to_remove}. Continuing anyway."
+    else
+        # Git builds are installed manually, so remove them manually
+        rm -f /boot/vmlinuz-${kernel_to_remove} /boot/initramfs-${kernel_to_remove}.img /boot/System.map-${kernel_to_remove} /boot/config-${kernel_to_remove}
+        rm -rf /lib/modules/${kernel_to_remove}
+        log "Manually removed files for kernel ${kernel_to_remove}"
+    fi
+    rm -f "$LAST_KERNEL_FILE"
+}
+
 do_abort() {
     log "FATAL: $1"
     log "Aborting bisection."
     if [[ "$BISECT_MODE" == "git" ]]; then cd "$KERNEL_SRC_DIR"; git bisect reset || true; fi
     if [ -f "${STATE_DIR}/original_kernel" ]; then set_boot_kernel "$(cat "${STATE_DIR}/original_kernel")"; fi
+    # Attempt to clean up the last installed kernel before exiting
+    remove_last_kernel
     rm -rf "$STATE_DIR" "$RPM_FAKE_REPO_PATH"
     systemctl disable kdump-bisect.service
     exit 1
@@ -177,6 +204,7 @@ do_install_commit() {
         do_abort "Installed kernel not found at ${new_kernel_path}."
     fi
 
+    echo "$kernel_version_string" > "$LAST_KERNEL_FILE"
     set_boot_kernel "$new_kernel_path"
     echo "$next_phase_on_reboot" > "$STATE_FILE_PHASE"
     log "Rebooting into new kernel..."
@@ -305,6 +333,9 @@ do_continue() {
     local repo_dir
     if [[ "$BISECT_MODE" == "rpm" ]]; then repo_dir="$RPM_FAKE_REPO_PATH"; else repo_dir="$KERNEL_SRC_DIR"; fi
     cd "$repo_dir"
+
+    # Clean up the kernel that was just tested
+    remove_last_kernel
 
     if [ ! -f "$RESULT_FILE" ]; then do_abort "Result file not found!"; fi
     local result=$(cat "$RESULT_FILE"); rm -f "$RESULT_FILE"
