@@ -33,7 +33,7 @@ log() {
 # --- Kernel and Grub Management ---
 get_installed_kernels() { grubby --info=ALL | grep -E "^kernel=" | sed 's/kernel=//;s/"//g'; }
 set_boot_kernel() { log "Setting default boot kernel to: $1"; grubby --set-default "$1"; }
-get_current_kernel_path() { grubby --info=$(uname -r) | grep -E "^kernel=" | sed 's/kernel=//;s/"//g'; }
+get_current_kernel_path() { grubby --info=/boot/vmlinuz-$(uname -r) | grep -E "^kernel=" | sed 's/kernel=//;s/"//g'; }
 
 # --- Bisection Helper Functions ---
 do_abort() {
