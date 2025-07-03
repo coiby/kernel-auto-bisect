@@ -220,7 +220,7 @@ do_test() {
         rm -f "$PANIC_FLAG_FILE"
 
         if ! type on_test &> /dev/null; then do_abort "'on_test' function not found."; fi
-        if on_test; then local test_outcome="bad"; else local test_outcome="good"; fi
+        if on_test; then local test_outcome="good"; else local test_outcome="bad"; fi
 
         if [[ "$current_phase" == "VERIFY_GOOD_TEST" ]]; then
             if [[ "$test_outcome" == "good" ]]; then
