@@ -1,0 +1,13 @@
+[Unit]
+Description=Kdump Kernel Bisect Controller
+After=network-online.target
+# This service needs to run late in the boot process, after grubby and other tools are available.
+
+[Service]
+Type=oneshot
+# Run the main script without any arguments. The script will figure out what to do.
+ExecStart=/usr/local/bin/kdump-bisect/bisect-kernel.sh
+StandardOutput=journal+console
+
+[Install]
+WantedBy=multi-user.target
