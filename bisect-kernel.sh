@@ -37,6 +37,13 @@ set_boot_kernel() { log "Setting default boot kernel to: $1"; grubby --set-defau
 get_current_kernel_path() { grubby --info=/boot/vmlinuz-$(uname -r) | grep -E "^kernel=" | sed 's/kernel=//;s/"//g'; }
 
 # --- Bisection Helper Functions ---
+remove_kernel_rpm() {
+    # Current running kernel is marked as protected and dnf won't remove it.
+    # So use rpm instead.
+    rpm -e "kernel-core-$1" "kernel-modules-$1" "kernel-modules-core-$1" "kernel-$1"
+}
+
+# remove last tested kernel to prevent blowing up /boot
 remove_last_kernel() {
     if [ ! -f "$LAST_KERNEL_FILE" ]; then return; fi
 
@@ -50,12 +57,10 @@ remove_last_kernel() {
 
     log "Removing previously tested kernel: ${kernel_to_remove}"
     if [[ "$BISECT_MODE" == "rpm" ]]; then
-        # RPMs are managed by dnf
-        dnf remove -y "kernel-core-${kernel_to_remove}" "kernel-modules-${kernel_to_remove}" "kernel-${kernel_to_remove}" > /dev/null 2>&1 || log "Failed to remove kernel RPMs for ${kernel_to_remove}. Continuing anyway."
+        remove_kernel_rpm "${kernel_to_remove}"
     else
-        # Git builds are installed manually, so remove them manually
-        rm -f /boot/vmlinuz-${kernel_to_remove} /boot/initramfs-${kernel_to_remove}.img /boot/System.map-${kernel_to_remove} /boot/config-${kernel_to_remove}
-        rm -rf /lib/modules/${kernel_to_remove}
+        /usr/bin/kernel-install remove "$_kernel_release"
+        rm -rf "/usr/lib/modules/${_kernel_release}"
         log "Manually removed files for kernel ${kernel_to_remove}"
     fi
     rm -f "$LAST_KERNEL_FILE"
