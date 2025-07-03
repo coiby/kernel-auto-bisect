@@ -240,60 +240,53 @@ do_test() {
     # This function remains largely the same, as it's mode-agnostic.
     # It just runs the user's functions and determines good/bad.
     log "--- Phase: TEST on $(uname -r) ---"
-
     if [ ! -f "$REPRODUCER_SCRIPT" ]; then do_abort "Reproducer script not found."; fi
     source "$REPRODUCER_SCRIPT"
 
     if [ ! -f "$RUN_COUNT_FILE" ]; then echo 1 > "$RUN_COUNT_FILE"; fi
-    local run_count=$(cat "$RUN_COUNT_FILE")
-    local current_phase=$(cat "$STATE_FILE_PHASE")
+    local run_count=$(cat "$RUN_COUNT_FILE"); local current_phase=$(cat "$STATE_FILE_PHASE")
 
     if [ -f "$PANIC_FLAG_FILE" ]; then
-        log "Verifying outcome of run #${run_count}"
-        rm -f "$PANIC_FLAG_FILE"
-
+        log "Verifying outcome of run #${run_count}"; rm -f "$PANIC_FLAG_FILE"
         if ! type on_test &> /dev/null; then do_abort "'on_test' function not found."; fi
-        if on_test; then local test_outcome="good"; else local test_outcome="bad"; fi
+        if on_test; then local test_outcome="bad"; else local test_outcome="good"; fi
 
+        # --- Verification of GOOD_COMMIT ---
         if [[ "$current_phase" == "VERIFY_GOOD_TEST" ]]; then
-            if [[ "$test_outcome" == "good" ]]; then
-                log "SUCCESS: GOOD_COMMIT verified as good."
+            if [[ "$test_outcome" == "bad" ]]; then
+                do_abort "GOOD_COMMIT behaved as BAD on run #${run_count}. Please check your commits."
+            fi
+            if [ "$run_count" -ge "$RUNS_PER_COMMIT" ]; then
+                log "SUCCESS: GOOD_COMMIT verified as good after ${RUNS_PER_COMMIT} runs."
+                rm -f "$RUN_COUNT_FILE"
                 echo "VERIFY_BAD_BUILD" > "$STATE_FILE_PHASE"
                 do_return_and_continue
             else
-                do_abort "GOOD_COMMIT behaved as BAD."
+                run_count=$((run_count + 1)); echo "$run_count" > "$RUN_COUNT_FILE"
+                log "GOOD_COMMIT passed run #${run_count-1}. Proceeding to next verification run."
             fi
-            return
-        fi
-
-        if [[ "$current_phase" == "VERIFY_BAD_TEST" ]]; then
+        # --- Verification of BAD_COMMIT ---
+        elif [[ "$current_phase" == "VERIFY_BAD_TEST" ]]; then
             if [[ "$test_outcome" == "bad" ]]; then
-                log "SUCCESS: BAD_COMMIT verified as bad."
-                echo "BUILD" > "$STATE_FILE_PHASE"
-                do_return_and_continue
-            else
-                do_abort "BAD_COMMIT behaved as GOOD."
-            fi
-            return
-        fi
-        
-        if [[ "$test_outcome" == "bad" ]]; then
-            log "SUCCESS: Commit is BAD."
-            echo "bad" > "$RESULT_FILE"
-            rm -f "$RUN_COUNT_FILE"
-            do_return_and_continue
-            return
-        else
-            log "FAILURE: on_test returned non-zero for run #${run_count}."
-            if [ "$run_count" -ge "$RUNS_PER_COMMIT" ]; then
-                log "All runs failed. Commit is GOOD."
-                echo "good" > "$RESULT_FILE"
+                log "SUCCESS: BAD_COMMIT verified as bad on run #${run_count}."
                 rm -f "$RUN_COUNT_FILE"
+                echo "BUILD" > "$STATE_FILE_PHASE" # Verification done, proceed to normal bisection
                 do_return_and_continue
-                return
+            elif [ "$run_count" -ge "$RUNS_PER_COMMIT" ]; then
+                do_abort "BAD_COMMIT behaved as GOOD after ${RUNS_PER_COMMIT} runs. Please check your commits."
+            else
+                run_count=$((run_count + 1)); echo "$run_count" > "$RUN_COUNT_FILE"
+                log "BAD_COMMIT test failed on run #${run_count-1}. Proceeding to next verification run."
             fi
-            run_count=$((run_count + 1)); echo "$run_count" > "$RUN_COUNT_FILE"
-            log "Proceeding to run #${run_count}."
+        # --- Normal Bisection Test ---
+        else # current_phase is TEST
+            if [[ "$test_outcome" == "bad" ]]; then
+                log "SUCCESS: Commit is BAD."; echo "bad" > "$RESULT_FILE"; rm -f "$RUN_COUNT_FILE"; do_return_and_continue
+            elif [ "$run_count" -ge "$RUNS_PER_COMMIT" ]; then
+                log "All runs failed. Commit is GOOD."; echo "good" > "$RESULT_FILE"; rm -f "$RUN_COUNT_FILE"; do_return_and_continue
+            else
+                run_count=$((run_count + 1)); echo "$run_count" > "$RUN_COUNT_FILE"; log "Proceeding to run #${run_count}."
+            fi
         fi
     fi
 
