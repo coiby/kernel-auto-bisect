@@ -134,7 +134,7 @@ do_install_commit() {
 
         log "Ensuring RPMs for kernel ${release} are in cache: ${rpm_cache_dir}"
         local rpms_to_install=()
-        for pkg in kernel-core kernel-modules kernel; do
+        for pkg in kernel-core kernel-modules kernel-modules-core kernel; do
             local rpm_filename="${pkg}-${release}.${arch}.rpm"
             local rpm_path="${rpm_cache_dir}/${rpm_filename}"
             local rpm_url="${base_url}/${rpm_filename}"
