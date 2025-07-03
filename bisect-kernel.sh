@@ -181,7 +181,7 @@ do_install_commit() {
     set_boot_kernel "$new_kernel_path"
     echo "$next_phase_on_reboot" > "$STATE_FILE_PHASE"
     log "Rebooting into new kernel..."
-    reboot
+    bisect_reboot
 }
 
 do_bisect_install() {
@@ -272,8 +272,23 @@ do_test() {
 
     touch "$PANIC_FLAG_FILE"
     log "Triggering kernel panic NOW."
+    bisect_panic
+    log "ERROR: Failed to trigger panic! Rebooting in 3 minutes."; sleep 180; bisect_reboot
+}
+
+preapre_reboot() {
+    # try to reboot to current EFI bootloader entry next time
+    command -v rstrnt-prepare-reboot &> /dev/null && rstrnt-prepare-reboot
+}
+
+bisect_panic() {
+    preapre_reboot
     echo 1 > /proc/sys/kernel/sysrq; echo c > /proc/sysrq-trigger
-    log "ERROR: Failed to trigger panic! Rebooting in 3 minutes."; sleep 180; reboot
+}
+
+bisect_reboot() {
+    preapre_reboot
+    reboot
 }
 
 do_return_and_continue() {
@@ -282,7 +297,7 @@ do_return_and_continue() {
         echo "CONTINUE" > "$STATE_FILE_PHASE"
     fi
     log "Rebooting back to original kernel..."
-    reboot
+    bisect_reboot
 }
 
 do_continue() {
