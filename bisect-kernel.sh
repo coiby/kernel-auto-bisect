@@ -391,7 +391,7 @@ handle_phase() {
             fi
             ;;
         CONTINUE)
-            if [[ "$current_kernel" == "$(basename $(cat ${STATE_DIR}/original_kernel))" ]]; then
+            if [[ "vmlinuz-$current_kernel" == "$(basename $(cat ${STATE_DIR}/original_kernel))" ]]; then
                 do_continue
             else
                 log "In CONTINUE phase but not on original kernel. Waiting for reboot."
