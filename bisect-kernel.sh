@@ -308,6 +308,16 @@ preapre_reboot() {
 }
 
 bisect_panic() {
+    count=0
+    while : ; do
+        kdumpctl status && break
+        sleep 5
+        count=$((count + 5))
+        if [[ $count -gt 60 ]]; then
+            do_abort "Something is wrong. Please fix it and trigger panic manually"
+        fi
+    done
+
     preapre_reboot
     echo 1 > /proc/sys/kernel/sysrq; echo c > /proc/sysrq-trigger
 }
