@@ -210,6 +210,12 @@ do_install_commit() {
             ./scripts/config -e "$_opt"
         done
 
+        if grep -qs "^nfs" /etc/kdump.conf; then
+            ORIGINAL_KERNEL_PATH=$(cat "$ORIGINAL_KERNEL")
+            ORIGINAL_KERNEL_CONFIG=${ORIGINAL_KERNEL_PATH/vmlinuz/config}
+            /usr/bin/grep NFS $ORIGINAL_KERNEL_CONFIG >> .config
+        fi
+
         ./scripts/config --set-str CONFIG_LOCALVERSION "${BISECT_VERSION_TAG}"
         if ! yes $'\n' | make -j"${MAKE_JOBS}" > "${STATE_DIR}/build.log" 2>&1; then
             do_abort "Build failed for commit ${commit_to_install}."
