@@ -15,6 +15,7 @@ STATE_FILE_PHASE="${STATE_DIR}/phase"
 RUN_COUNT_FILE="${STATE_DIR}/run_count"
 PANIC_FLAG_FILE="${STATE_DIR}/panic_flag"
 LAST_KERNEL_FILE="${STATE_DIR}/last_tested_kernel_version"
+ORIGINAL_KERNEL="${STATE_DIR}/original_kernel"
 
 # --- Load Config ---
 if [ ! -f "$CONFIG_FILE" ]; then
@@ -70,7 +71,7 @@ do_abort() {
     log "FATAL: $1"
     log "Aborting bisection."
     if [[ "$BISECT_MODE" == "git" ]]; then cd "$KERNEL_SRC_DIR"; git bisect reset || true; fi
-    if [ -f "${STATE_DIR}/original_kernel" ]; then set_boot_kernel "$(cat "${STATE_DIR}/original_kernel")"; fi
+    if [ -f "$ORIGINAL_KERNEL" ]; then set_boot_kernel "$(cat "$ORIGINAL_KERNEL")"; fi
     # Attempt to clean up the last installed kernel before exiting
     remove_last_kernel
     rm -rf "$STATE_DIR" "$RPM_FAKE_REPO_PATH"
@@ -114,7 +115,7 @@ do_start() {
     mkdir -p "${STATE_DIR}"
     touch "$LOG_FILE"
 
-    get_current_kernel_path > "${STATE_DIR}/original_kernel"
+    get_current_kernel_path > "$ORIGINAL_KERNEL"
 
     local good_ref="$GOOD_COMMIT"
     local bad_ref="$BAD_COMMIT"
@@ -344,7 +345,7 @@ bisect_reboot() {
 }
 
 do_return_and_continue() {
-    set_boot_kernel "$(cat "${STATE_DIR}/original_kernel")"
+    set_boot_kernel "$(cat "$ORIGINAL_KERNEL")"
     if [[ "$(cat ${STATE_FILE_PHASE})" == "TEST" ]]; then
         echo "CONTINUE" > "$STATE_FILE_PHASE"
     fi
@@ -407,7 +408,7 @@ handle_phase() {
             fi
             ;;
         CONTINUE)
-            if [[ "vmlinuz-$current_kernel" == "$(basename $(cat ${STATE_DIR}/original_kernel))" ]]; then
+            if [[ "vmlinuz-$current_kernel" == "$(basename $(cat $ORIGINAL_KERNEL))" ]]; then
                 do_continue
             else
                 log "In CONTINUE phase but not on original kernel. Waiting for reboot."
