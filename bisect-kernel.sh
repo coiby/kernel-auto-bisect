@@ -215,6 +215,11 @@ do_install_commit() {
             /usr/bin/grep NFS $ORIGINAL_KERNEL_CONFIG >> .config
         fi
 
+        git show main:scripts/sign-file.c > scripts/sign-file.c
+        git show main:certs/extract-cert.c > certs/extract-cert.c
+        git show main:scripts/ssl-common.h > scripts/ssl-common.h
+        cp scripts/ssl-common.h certs/
+
         ./scripts/config --set-str CONFIG_LOCALVERSION "${BISECT_VERSION_TAG}"
         if ! yes $'\n' | make -j"${MAKE_JOBS}" > "${STATE_DIR}/build.log" 2>&1; then
             do_abort "Build failed for commit ${commit_to_install}."
@@ -224,6 +229,12 @@ do_install_commit() {
             do_abort "Install failed for commit ${commit_to_install}."
         fi
         kernel_version_string="$(make kernelrelease)"
+        git checkout -- scripts/sign-file.c
+        git checkout -- certs/extract-cert.c
+        if ! git checkout -- scripts/ssl-common.h &> /dev/null; then
+            rm -f scripts/ssl-common.h
+        fi
+        rm -f certs/ssl-common.h
     fi
     
     local new_kernel_path="/boot/vmlinuz-${kernel_version_string}"
