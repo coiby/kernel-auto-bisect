@@ -59,8 +59,8 @@ remove_last_kernel() {
     if [[ "$BISECT_MODE" == "rpm" ]]; then
         remove_kernel_rpm "${kernel_to_remove}"
     else
-        /usr/bin/kernel-install remove "$_kernel_release"
-        rm -rf "/usr/lib/modules/${_kernel_release}"
+        /usr/bin/kernel-install remove "$kernel_to_remove"
+        rm -rf "/usr/lib/modules/${kernel_to_remove}"
         log "Manually removed files for kernel ${kernel_to_remove}"
     fi
     rm -f "$LAST_KERNEL_FILE"
