@@ -74,7 +74,6 @@ do_abort() {
     if [ -f "$ORIGINAL_KERNEL" ]; then set_boot_kernel "$(cat "$ORIGINAL_KERNEL")"; fi
     # Attempt to clean up the last installed kernel before exiting
     remove_last_kernel
-    rm -rf "$STATE_DIR" "$RPM_FAKE_REPO_PATH"
     systemctl disable kdump-bisect.service
     exit 1
 }
