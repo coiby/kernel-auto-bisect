@@ -193,6 +193,10 @@ do_install_commit() {
         cd "$repo_dir"
         git checkout -q "$commit_to_install"
 
+        modprobe squashfs
+        modprobe loop
+        modprobe overlay
+        modprobe erofs &> /dev/null || :
         yes '' | make localmodconfig
         sed -i "/rhel.pem/d" .config
 
@@ -200,13 +204,6 @@ do_install_commit() {
         ./scripts/config -d DEBUG_INFO_BTF
         ./scripts/config -d DEBUG_INFO_BTF_MODULES
         ./scripts/config -d DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT
-
-        ./scripts/config -m SQUASHFS
-        ./scripts/config -m OVERLAY_FS
-        ./scripts/config -m BLK_DEV_LOOP
-        for _opt in SQUASHFS_FILE_DIRECT SQUASHFS_DECOMP_MULTI_PERCPU SQUASHFS_COMPILE_DECOMP_MULTI_PERCPU SQUASHFS_XATTR SQUASHFS_ZLIB SQUASHFS_LZ4 SQUASHFS_LZO SQUASHFS_XZ SQUASHFS_ZSTD; do
-            ./scripts/config -e "$_opt"
-        done
 
         if grep -qs "^nfs" /etc/kdump.conf; then
             ORIGINAL_KERNEL_PATH=$(cat "$ORIGINAL_KERNEL")
