@@ -226,7 +226,7 @@ do_install_commit() {
         cp scripts/ssl-common.h certs/
 
         ./scripts/config --set-str CONFIG_LOCALVERSION "${BISECT_VERSION_TAG}"
-        if ! yes $'\n' | make -j"${MAKE_JOBS}" > "${STATE_DIR}/build.log" 2>&1; then
+        if ! yes $'\n' | make KCFLAGS="-Wno-error=calloc-transposed-args"  -j"${MAKE_JOBS}" > "${STATE_DIR}/build.log" 2>&1; then
             do_abort "Build failed for commit ${commit_to_install}."
         fi
         log "Installing kernel..."
