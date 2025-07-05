@@ -211,9 +211,18 @@ do_install_commit() {
             /usr/bin/grep NFS $ORIGINAL_KERNEL_CONFIG >> .config
         fi
 
-        git show main:scripts/sign-file.c > scripts/sign-file.c
-        git show main:certs/extract-cert.c > certs/extract-cert.c
-        git show main:scripts/ssl-common.h > scripts/ssl-common.h
+        for _branch in master main; do
+            if git rev-parse --verify master &> /dev/null; then
+                MAIN_BRANCH=$_branch
+                break
+            fi
+        done
+
+        [[ -z $MAIN_BRANCH ]] && do_abort "No master or main branch exist"
+
+        git show $MAIN_BRANCH:scripts/sign-file.c > scripts/sign-file.c
+        git show $MAIN_BRANCH:certs/extract-cert.c > certs/extract-cert.c
+        git show $MAIN_BRANCH:scripts/ssl-common.h > scripts/ssl-common.h
         cp scripts/ssl-common.h certs/
 
         ./scripts/config --set-str CONFIG_LOCALVERSION "${BISECT_VERSION_TAG}"
