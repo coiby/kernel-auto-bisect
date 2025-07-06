@@ -362,6 +362,7 @@ bisect_panic() {
 bisect_reboot() {
     preapre_reboot
     reboot
+    exit 0
 }
 
 do_return_and_continue() {
