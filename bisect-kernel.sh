@@ -225,7 +225,8 @@ do_install_commit() {
         git show $MAIN_BRANCH:scripts/ssl-common.h > scripts/ssl-common.h
         cp scripts/ssl-common.h certs/
 
-        ./scripts/config --set-str CONFIG_LOCALVERSION "${BISECT_VERSION_TAG}"
+        _commit_short_id=$(git rev-parse --short "$commit_to_install"
+        ./scripts/config --set-str CONFIG_LOCALVERSION "$_commit_short_id}-"
         if ! yes $'\n' | make KCFLAGS="-Wno-error=calloc-transposed-args"  -j"${MAKE_JOBS}" > "${STATE_DIR}/build.log" 2>&1; then
             do_abort "Build failed for commit ${commit_to_install}."
         fi
