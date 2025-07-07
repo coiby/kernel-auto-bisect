@@ -169,6 +169,13 @@ decide_next_action() {
     run_reboot_strategy
 }
 
+finish() {
+    remove_last_kernel
+    set_boot_kernel "$(cat "$ORIGINAL_KERNEL")"
+    reboot
+    exit 0
+}
+
 process_result() {
     log "--- Phase: PROCESS_RESULT ---"
     if [ ! -f "$RESULT_FILE" ]; then do_abort "Result file not found!"; fi
@@ -204,6 +211,7 @@ process_result() {
                         final_report="Bad RPM: $(cat k_rel)\nURL: $(cat k_url)"
                     fi
                     echo -e "$final_report" > "${STATE_DIR}/bisect_final_log.txt"; do_abort "Bisection Complete."
+                    finish
                 fi
             else echo $((run_count+1)) > "$RUN_COUNT_FILE"; fi
             ;;
