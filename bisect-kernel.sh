@@ -50,7 +50,7 @@ remove_last_kernel() {
 
     local kernel_to_remove=$(cat "$LAST_KERNEL_FILE")
     # Safety check: never remove the running kernel
-    if [[ -z "$kernel_to_remove" ]] || [[ "$(uname -r)" == "$kernel_to_remove" ]]; then
+    if [[ -z "$kernel_to_remove" ]] || [[ "/boot/vmlinuz-$(uname -r)" == "$(cat "$ORIGINAL_KERNEL")" ]]; then
         log "WARNING: Skipping removal of last kernel, as it is running or undefined."
         rm -f "$LAST_KERNEL_FILE"
         return
@@ -371,6 +371,9 @@ do_return_and_continue() {
     if [[ "$(cat ${STATE_FILE_PHASE})" == "TEST" ]]; then
         echo "CONTINUE" > "$STATE_FILE_PHASE"
     fi
+
+    # Clean up the kernel that was just tested
+    remove_last_kernel
     log "Rebooting back to original kernel..."
     bisect_reboot
 }
@@ -380,9 +383,6 @@ do_continue() {
     local repo_dir
     if [[ "$BISECT_MODE" == "rpm" ]]; then repo_dir="$RPM_FAKE_REPO_PATH"; else repo_dir="$KERNEL_SRC_DIR"; fi
     cd "$repo_dir"
-
-    # Clean up the kernel that was just tested
-    remove_last_kernel
 
     if [ ! -f "$RESULT_FILE" ]; then do_abort "Result file not found!"; fi
     local result=$(cat "$RESULT_FILE"); rm -f "$RESULT_FILE"
