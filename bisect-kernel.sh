@@ -92,7 +92,15 @@ generate_git_repo_from_package_list() {
 
 # --- Main Bisection Functions ---
 do_start() {
-    log "--- Bisection START ---"; mkdir -p "${STATE_DIR}" "${HANDLER_DIR}"; touch "$LOG_FILE"
+    if [[ -d ${STATE_DIR} ]]; then
+        echo "${STATE_DIR} exists, deleting it"
+    fi
+    rm -rf "${STATE_DIR}" "$RPM_FAKE_REPO_PATH"
+    mkdir -p "${STATE_DIR}"
+    touch "$LOG_FILE"
+
+    log "--- Bisection START ---"
+
     grubby --info=/boot/vmlinuz-$(uname -r) | grep -E "^kernel=" | sed 's/kernel=//;s/"//g' > "$ORIGINAL_KERNEL_FILE"
 
     local good_ref="$GOOD_COMMIT"; local bad_ref="$BAD_COMMIT"
