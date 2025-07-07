@@ -10,15 +10,15 @@ run_install_strategy() {
     remove_last_kernel
     local kernel_version_string
     case "$INSTALL_STRATEGY" in
-        git)  kernel_version_string=$(install_from_git "$commit_to_install") ;;
-        rpm)  kernel_version_string=$(install_from_rpm "$commit_to_install") ;;
+        git)  install_from_git "$commit_to_install" ;;
+        rpm)  install_from_rpm "$commit_to_install" ;;
         *)    do_abort "Unknown INSTALL_STRATEGY: ${INSTALL_STRATEGY}" ;;
     esac
 
+    kernel_version_string=$(cat "$LAST_KERNEL_FILE")
     local new_kernel_path="/boot/vmlinuz-${kernel_version_string}"
     if [ ! -f "$new_kernel_path" ]; then do_abort "Installed kernel not found at ${new_kernel_path}."; fi
     
-    echo "$kernel_version_string" > "$LAST_KERNEL_FILE"
     set_boot_kernel "$new_kernel_path"
 }
 
@@ -76,7 +76,7 @@ install_from_git() {
     if ! yes $'\n' | make KCFLAGS="-Wno-error=calloc-transposed-args" -j"${MAKE_JOBS}" > "${STATE_DIR}/build.log" 2>&1; then do_abort "Build failed."; fi
     if ! make modules_install install >> "${STATE_DIR}/build.log" 2>&1; then _undo_openssl_engine_workaround; do_abort "Install failed."; fi
     _undo_openssl_engine_workaround
-    echo "$(make -s kernelrelease)"
+    echo "$kernel_version_string" > "$LAST_KERNEL_FILE"
 }
 
 install_from_rpm() {
@@ -100,5 +100,5 @@ install_from_rpm() {
     done
     
     if ! dnf install -y "${rpms_to_install[@]}" > "${STATE_DIR}/install.log" 2>&1; then do_abort "RPM install failed."; fi
-    echo "$release"
+    echo "$release" > "$LAST_KERNEL_FILE"
 }
