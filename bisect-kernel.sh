@@ -48,7 +48,7 @@ remove_last_kernel() {
     if [ ! -f "$LAST_KERNEL_FILE" ]; then return; fi
     local kernel_to_remove=$(cat "$LAST_KERNEL_FILE")
     # Safety check: never remove the original kernel
-    if [[ -z "$kernel_to_remove" ]] || [[ "/boot/vmlinuz-$(uname -r)" == "$(cat "$ORIGINAL_KERNEL")" ]]; then
+    if [[ -z "$kernel_to_remove" ]] || [[ "/boot/vmlinuz-$(uname -r)" == "$(cat "$ORIGINAL_KERNEL_FILE")" ]]; then
         log "WARNING: Skipping removal of last kernel, as it is running or undefined."
         rm -f "$LAST_KERNEL_FILE"
         return
@@ -174,7 +174,7 @@ decide_next_action() {
 
 finish() {
     remove_last_kernel
-    set_boot_kernel "$(cat "$ORIGINAL_KERNEL")"
+    set_boot_kernel "$(cat "$ORIGINAL_KERNEL_FILE")"
     reboot
     exit 0
 }
