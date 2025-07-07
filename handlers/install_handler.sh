@@ -74,9 +74,14 @@ install_from_git() {
     _openssl_engine_workaround
     ./scripts/config --set-str CONFIG_LOCALVERSION "-${_commit_short_id}"
     if ! yes $'\n' | make KCFLAGS="-Wno-error=calloc-transposed-args" -j"${MAKE_JOBS}" > "${STATE_DIR}/build.log" 2>&1; then do_abort "Build failed."; fi
-    if ! make modules_install install >> "${STATE_DIR}/build.log" 2>&1; then _undo_openssl_engine_workaround; do_abort "Install failed."; fi
+    if ! _module_install_output=$(make modules_install -j); then _undo_openssl_engine_workaround; do_abort "Install failed."; fi
+    echo "$_module_install_output" >> "${STATE_DIR}/build.log"
+    if ! make install >> "${STATE_DIR}/build.log" 2>&1; then _undo_openssl_engine_workaround; do_abort "Install failed."; fi
     _undo_openssl_engine_workaround
-    echo "$kernel_version_string" > "$LAST_KERNEL_FILE"
+    _kernelrelease_str=$(make -s kernelrelease)
+    _dirty_str=-dirty
+    grep -qe "$_dirty_str$" <<< "$_module_install_output" && ! grep -qe "$_dirty_str$" <<< "$_kernelrelease_str" && _kernelrelease_str+=$_dirty_str
+    echo "$_kernelrelease_str" > "$LAST_KERNEL_FILE"
 }
 
 install_from_rpm() {
