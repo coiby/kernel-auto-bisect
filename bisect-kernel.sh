@@ -39,6 +39,7 @@ set_boot_kernel() { log "Setting default boot kernel to: $1"; grubby --set-defau
 preapre_reboot() {
     # try to reboot to current EFI bootloader entry next time
     command -v rstrnt-prepare-reboot &> /dev/null && rstrnt-prepare-reboot > /dev/null
+    sync -f "$STATE_DIR"
     sync
 }
 
