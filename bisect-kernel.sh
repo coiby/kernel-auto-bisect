@@ -129,6 +129,8 @@ decide_next_action() {
     log "--- Phase: DECIDE_NEXT_ACTION ---"
     if [ ! -s "$PLAN_FILE" ]; then do_abort "Plan is empty but bisection not finished."; fi
     
+    remove_last_kernel # Clean up the previously tested kernel before installing a new one.
+
     local current_task=$(head -n 1 "$PLAN_FILE"); local task_type=$(echo "$current_task" | cut -d: -f1)
     local commit_to_test
 
@@ -187,36 +189,28 @@ process_result() {
     case "$task_type" in
         VERIFY_GOOD)
             if [[ "$result" == "bad" ]]; then do_abort "GOOD_COMMIT behaved as BAD."; fi
-            if [ "$run_count" -ge "$RUNS_PER_COMMIT" ]; then
-                log "SUCCESS: GOOD_COMMIT verified."; sed -i '1d' "$PLAN_FILE"; rm -f "$RUN_COUNT_FILE"
-            else echo $((run_count+1)) > "$RUN_COUNT_FILE"; fi
+            log "SUCCESS: GOOD_COMMIT verified."; sed -i '1d' "$PLAN_FILE"
             ;;
         VERIFY_BAD)
-            if [[ "$result" == "bad" ]]; then
-                log "SUCCESS: BAD_COMMIT verified as bad."
-                sed -i '1d' "$PLAN_FILE"; rm -f "$RUN_COUNT_FILE"
-            elif [ "$run_count" -ge "$RUNS_PER_COMMIT" ]; then do_abort "BAD_COMMIT behaved as GOOD.";
-            else echo $((run_count+1)) > "$RUN_COUNT_FILE"; fi
+            if [[ "$result" == "good" ]]; then do_abort "BAD_COMMIT behaved as GOOD."; fi
+            log "SUCCESS: BAD_COMMIT verified as bad."; sed -i '1d' "$PLAN_FILE"
             ;;
         BISECT)
             local repo_dir; if [[ "$INSTALL_STRATEGY" == "rpm" ]]; then repo_dir="$RPM_FAKE_REPO_PATH"; else repo_dir="$KERNEL_SRC_DIR"; fi; cd "$repo_dir"
-            if [[ "$result" == "bad" ]] || [ "$run_count" -ge "$RUNS_PER_COMMIT" ]; then
-                local bisect_result=$([[ "$result" == "bad" ]] && echo "bad" || echo "good")
-                log "Test conclusive. Updating git bisect with '${bisect_result}'"
-                git bisect "$bisect_result" | tee "${STATE_DIR}/bisect_step.log"
-                rm -f "$RUN_COUNT_FILE"
-                if grep -q "is the first bad commit" "${STATE_DIR}/bisect_step.log"; then
-                    log "--- BISECTION FINISHED ---"; local final_report=$(git bisect log)
-                    if [[ "$INSTALL_STRATEGY" == "rpm" ]]; then
-                        local bad_hash=$(echo "$final_report"|grep "bad"|head -n 1|awk '{print $1}'); git checkout -q "$bad_hash"
-                        final_report="Bad RPM: $(cat k_rel)\nURL: $(cat k_url)"
-                    fi
-                    echo -e "$final_report" > "${STATE_DIR}/bisect_final_log.txt"; do_abort "Bisection Complete."
-                    finish
+            log "Test conclusive. Updating git bisect with '${result}'"
+            git bisect "$result" | tee "${STATE_DIR}/bisect_step.log"
+            if grep -q "is the first bad commit" "${STATE_DIR}/bisect_step.log"; then
+                log "--- BISECTION FINISHED ---"; local final_report=$(git bisect log)
+                if [[ "$INSTALL_STRATEGY" == "rpm" ]]; then
+                    local bad_hash=$(echo "$final_report"|grep "bad"|head -n 1|awk '{print $1}'); git checkout -q "$bad_hash"
+                    final_report="Bad RPM: $(cat k_rel)\nURL: $(cat k_url)"
                 fi
-            else echo $((run_count+1)) > "$RUN_COUNT_FILE"; fi
+                echo -e "$final_report" > "${STATE_DIR}/bisect_final_log.txt"; do_abort "Bisection Complete."
+                finish
+            fi
             ;;
     esac
+
     decide_next_action
 }
 
