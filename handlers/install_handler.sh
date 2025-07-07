@@ -6,7 +6,8 @@
 run_install_strategy() {
     local commit_to_install=$1
     log "--- Phase: INSTALL ---"
-    
+
+    remove_last_kernel
     local kernel_version_string
     case "$INSTALL_STRATEGY" in
         git)  kernel_version_string=$(install_from_git "$commit_to_install") ;;
