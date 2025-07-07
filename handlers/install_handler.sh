@@ -52,10 +52,6 @@ install_from_git() {
     log "Strategy: install_from_git for commit ${commit_to_install}"
     cd "$KERNEL_SRC_DIR"; git checkout -q "$commit_to_install"
 
-    modprobe squashfs
-    modprobe loop
-    modprobe overlay
-    modprobe erofs &> /dev/null || :
     yes '' | make localmodconfig
     sed -i "/rhel.pem/d" .config
 
@@ -64,9 +60,13 @@ install_from_git() {
     ./scripts/config -d DEBUG_INFO_BTF_MODULES
     ./scripts/config -d DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT
 
+    ORIGINAL_KERNEL_PATH=$(cat "$ORIGINAL_KERNEL_FILE")
+    ORIGINAL_KERNEL_CONFIG=${ORIGINAL_KERNEL_PATH/vmlinuz/config}
+
+    # Enable loop, quashfs, overlay and erofs
+    grep -e BLK_DEV_LOOP -e SQUASHFS -e OVERLAY -e EROFS_FS "$ORIGINAL_KERNEL_CONFIG" >> .config
+
     if grep -qs "^nfs" /etc/kdump.conf; then
-        ORIGINAL_KERNEL_PATH=$(cat "$ORIGINAL_KERNEL_FILE")
-        ORIGINAL_KERNEL_CONFIG=${ORIGINAL_KERNEL_PATH/vmlinuz/config}
         /usr/bin/grep NFS $ORIGINAL_KERNEL_CONFIG >> .config
     fi
 
