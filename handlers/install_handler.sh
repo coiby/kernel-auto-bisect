@@ -71,7 +71,7 @@ install_from_git() {
     fi
 
     _commit_short_id=$(git rev-parse --short "$commit_to_install")
-    openssl_engine_workaround
+    _openssl_engine_workaround
     ./scripts/config --set-str CONFIG_LOCALVERSION "-${_commit_short_id}"
     if ! yes $'\n' | make KCFLAGS="-Wno-error=calloc-transposed-args" -j"${MAKE_JOBS}" > "${STATE_DIR}/build.log" 2>&1; then do_abort "Build failed."; fi
     if ! make modules_install install >> "${STATE_DIR}/build.log" 2>&1; then _undo_openssl_engine_workaround; do_abort "Install failed."; fi
