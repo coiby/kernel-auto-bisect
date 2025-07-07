@@ -65,7 +65,7 @@ install_from_git() {
     ./scripts/config -d DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT
 
     if grep -qs "^nfs" /etc/kdump.conf; then
-        ORIGINAL_KERNEL_PATH=$(cat "$ORIGINAL_KERNEL")
+        ORIGINAL_KERNEL_PATH=$(cat "$ORIGINAL_KERNEL_FILE")
         ORIGINAL_KERNEL_CONFIG=${ORIGINAL_KERNEL_PATH/vmlinuz/config}
         /usr/bin/grep NFS $ORIGINAL_KERNEL_CONFIG >> .config
     fi
