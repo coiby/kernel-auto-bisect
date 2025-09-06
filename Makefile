@@ -10,8 +10,6 @@ CONFIG_FILE_TARGET := $(BIN_DIR)/bisect.conf
 # Source files and directories
 SCRIPT_SRC := bisect-kernel.sh
 CRIU_DAEMON_SRC := criu-daemon.sh
-SERVICE_SRC := kdump-bisect.service
-CRIU_SERVICE_SRC := criu-daemon.service
 CONFIG_SRC := bisect.conf
 HANDLER_SRC_DIR := handlers
 HANDLER_SRCS := $(wildcard $(HANDLER_SRC_DIR)/*.sh)
@@ -49,13 +47,6 @@ install:
 	@cp $(HANDLER_SRCS) $(HANDLER_DIR_TARGET)/
 	@chmod +x $(HANDLER_DIR_TARGET)/*.sh
 
-	@echo "Copying systemd services to $(SERVICE_DIR)/"
-	@cp $(SERVICE_SRC) $(SERVICE_DIR)/
-	@cp $(CRIU_SERVICE_SRC) $(SERVICE_DIR)/
-
-	@echo "Reloading systemd daemon..."
-	@systemctl daemon-reload
-
 	@if [ ! -f "$(CONFIG_FILE_TARGET)" ]; then \
 		echo "Copying default configuration to $(CONFIG_FILE_TARGET)"; \
 		cp $(CONFIG_SRC) $(CONFIG_FILE_TARGET); \
@@ -63,8 +54,6 @@ install:
 	@echo ""
 	@echo "Installation complete."
 	@echo "IMPORTANT: Please edit the configuration file at $(CONFIG_FILE_TARGET) before enabling the services."
-	@echo "NOTE: The CRIU daemon service must be enabled and started before running bisection:"
-	@echo "  systemctl enable --now criu-daemon.service"
 
 uninstall:
 	@if [ "$(EUID)" -ne 0 ]; then \
@@ -73,15 +62,6 @@ uninstall:
 	fi
 	@echo "Uninstalling kdump-auto-bisect tool..."
 	@echo "Disabling and stopping services..."
-	@systemctl disable --now $(SERVICE_SRC) || true
-	@systemctl disable --now $(CRIU_SERVICE_SRC) || true
-
-	@echo "Removing systemd service files..."
-	@rm -f $(SERVICE_DIR)/$(SERVICE_SRC)
-	@rm -f $(SERVICE_DIR)/$(CRIU_SERVICE_SRC)
-
-	@echo "Reloading systemd daemon..."
-	@systemctl daemon-reload
 
 	@echo "Removing script directory: $(BIN_DIR)"
 	@rm -rf $(BIN_DIR)
