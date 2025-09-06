@@ -23,9 +23,11 @@ load_config_and_handlers() {
     source "$CONFIG_FILE"
     for handler in "${HANDLER_DIR}"/*.sh; do if [ -f "$handler" ]; then source "$handler"; fi; done
     rm -rf /var/local/kdump-bisect-criu/dump/*
+    # 1. setsid somehow doesn't work, checkpointing will fail with "The criu itself is within dumped tree"
+    #    setsid criu-daemon.sh < /dev/null &> log_file &
+    # 2. Using a systemd service to start criu-daemon.sh somehow can lead to many
+    #    dump/restore issues like "can't write lsm profile"
     systemd-run --unit=checkpoint-test /usr/local/bin/kdump-bisect/criu-daemon.sh
-    #setsid /usr/local/bin/kdump-bisect/criu-daemon.sh &> /root/test2.log &
-    #systemctl enable --now criu-daemon.service
 }
 
 declare -A release_commit_map
