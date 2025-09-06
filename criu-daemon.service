@@ -1,0 +1,32 @@
+[Unit]
+Description=CRIU Daemon for Kernel Bisection
+Documentation=https://github.com/checkpoint-restore/criu
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/kdump-bisect/criu-daemon.sh daemon
+ExecStartPost=/usr/local/bin/kdump-bisect/criu-daemon.sh restore
+Restart=always
+RestartSec=5
+User=root
+Group=root
+
+# Security settings
+NoNewPrivileges=false
+# CRIU needs many privileges to checkpoint/restore processes
+CapabilityBoundingSet=CAP_SYS_ADMIN CAP_SYS_PTRACE CAP_SYS_CHROOT CAP_DAC_OVERRIDE CAP_FOWNER CAP_SETUID CAP_SETGID CAP_NET_ADMIN CAP_SYS_RESOURCE
+AmbientCapabilities=CAP_SYS_ADMIN CAP_SYS_PTRACE CAP_SYS_CHROOT CAP_DAC_OVERRIDE CAP_FOWNER CAP_SETUID CAP_SETGID CAP_NET_ADMIN CAP_SYS_RESOURCE
+
+# Working directory and file permissions
+WorkingDirectory=/var/local/kdump-bisect-criu
+StateDirectory=kdump-bisect-criu
+RuntimeDirectory=kdump-bisect
+LogsDirectory=kdump-bisect
+
+# Environment
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+[Install]
+WantedBy=multi-user.target

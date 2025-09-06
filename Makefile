@@ -9,7 +9,9 @@ CONFIG_FILE_TARGET := $(BIN_DIR)/bisect.conf
 
 # Source files and directories
 SCRIPT_SRC := bisect-kernel.sh
+CRIU_DAEMON_SRC := criu-daemon.sh
 SERVICE_SRC := kdump-bisect.service
+CRIU_SERVICE_SRC := criu-daemon.service
 CONFIG_SRC := bisect.conf
 HANDLER_SRC_DIR := handlers
 HANDLER_SRCS := $(wildcard $(HANDLER_SRC_DIR)/*.sh)
@@ -22,8 +24,8 @@ help:
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "Targets:"
-	@echo "  install      Install the bisection scripts, handlers, and systemd service."
-	@echo "  uninstall    Remove all installed files and the service."
+	@echo "  install      Install the bisection scripts, CRIU daemon, handlers, and systemd services."
+	@echo "  uninstall    Remove all installed files and services."
 	@echo "  help         Show this help message."
 
 install:
@@ -39,12 +41,17 @@ install:
 	@cp $(SCRIPT_SRC) $(BIN_DIR)/
 	@chmod +x $(BIN_DIR)/$(SCRIPT_SRC)
 
+	@echo "Copying CRIU daemon to $(BIN_DIR)/$(CRIU_DAEMON_SRC)"
+	@cp $(CRIU_DAEMON_SRC) $(BIN_DIR)/
+	@chmod +x $(BIN_DIR)/$(CRIU_DAEMON_SRC)
+
 	@echo "Copying handler scripts to $(HANDLER_DIR_TARGET)/"
 	@cp $(HANDLER_SRCS) $(HANDLER_DIR_TARGET)/
 	@chmod +x $(HANDLER_DIR_TARGET)/*.sh
 
-	@echo "Copying systemd service to $(SERVICE_DIR)/$(SERVICE_SRC)"
+	@echo "Copying systemd services to $(SERVICE_DIR)/"
 	@cp $(SERVICE_SRC) $(SERVICE_DIR)/
+	@cp $(CRIU_SERVICE_SRC) $(SERVICE_DIR)/
 
 	@echo "Reloading systemd daemon..."
 	@systemctl daemon-reload
@@ -55,7 +62,9 @@ install:
 	fi
 	@echo ""
 	@echo "Installation complete."
-	@echo "IMPORTANT: Please edit the configuration file at $(CONFIG_FILE_TARGET) before enabling the service."
+	@echo "IMPORTANT: Please edit the configuration file at $(CONFIG_FILE_TARGET) before enabling the services."
+	@echo "NOTE: The CRIU daemon service must be enabled and started before running bisection:"
+	@echo "  systemctl enable --now criu-daemon.service"
 
 uninstall:
 	@if [ "$(EUID)" -ne 0 ]; then \
@@ -63,11 +72,13 @@ uninstall:
 		exit 1; \
 	fi
 	@echo "Uninstalling kdump-auto-bisect tool..."
-	@echo "Disabling and stopping service..."
+	@echo "Disabling and stopping services..."
 	@systemctl disable --now $(SERVICE_SRC) || true
+	@systemctl disable --now $(CRIU_SERVICE_SRC) || true
 
-	@echo "Removing systemd service file: $(SERVICE_DIR)/$(SERVICE_SRC)"
+	@echo "Removing systemd service files..."
 	@rm -f $(SERVICE_DIR)/$(SERVICE_SRC)
+	@rm -f $(SERVICE_DIR)/$(CRIU_SERVICE_SRC)
 
 	@echo "Reloading systemd daemon..."
 	@systemctl daemon-reload
@@ -76,7 +87,7 @@ uninstall:
 	@rm -rf $(BIN_DIR)
 	@echo ""
 	@echo "Uninstallation complete."
-	@echo "Note: State directories like /var/local/kdump-bisect and the fake RPM repo are not removed."
+	@echo "Note: CRIU work directory /var/local/kdump-bisect-criu and fake RPM repo are not removed."
 
 clean:
 	@echo "Nothing to clean."
