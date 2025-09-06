@@ -15,7 +15,7 @@ run_install_strategy() {
         *)    do_abort "Unknown INSTALL_STRATEGY: ${INSTALL_STRATEGY}" ;;
     esac
 
-    kernel_version_string=$(cat "$LAST_KERNEL_FILE")
+    kernel_version_string="$LAST_TESTED_KERNEL"
     local new_kernel_path="/boot/vmlinuz-${kernel_version_string}"
     if [ ! -f "$new_kernel_path" ]; then do_abort "Installed kernel not found at ${new_kernel_path}."; fi
     
@@ -60,8 +60,7 @@ install_from_git() {
     ./scripts/config -d DEBUG_INFO_BTF_MODULES
     ./scripts/config -d DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT
 
-    ORIGINAL_KERNEL_PATH=$(cat "$ORIGINAL_KERNEL_FILE")
-    ORIGINAL_KERNEL_CONFIG=${ORIGINAL_KERNEL_PATH/vmlinuz/config}
+    ORIGINAL_KERNEL_CONFIG=${ORIGINAL_KERNEL/vmlinuz/config}
 
     # Enable loop, quashfs, overlay and erofs
     grep -e BLK_DEV_LOOP -e SQUASHFS -e OVERLAY -e EROFS_FS "$ORIGINAL_KERNEL_CONFIG" >> .config
@@ -73,15 +72,15 @@ install_from_git() {
     _commit_short_id=$(git rev-parse --short "$commit_to_install")
     _openssl_engine_workaround
     ./scripts/config --set-str CONFIG_LOCALVERSION "-${_commit_short_id}"
-    if ! yes $'\n' | make KCFLAGS="-Wno-error=calloc-transposed-args" -j"${MAKE_JOBS}" > "${STATE_DIR}/build.log" 2>&1; then do_abort "Build failed."; fi
+    if ! yes $'\n' | make KCFLAGS="-Wno-error=calloc-transposed-args" -j"${MAKE_JOBS}" > "/var/log/build.log" 2>&1; then do_abort "Build failed."; fi
     if ! _module_install_output=$(make modules_install -j); then _undo_openssl_engine_workaround; do_abort "Install failed."; fi
-    echo "$_module_install_output" >> "${STATE_DIR}/build.log"
-    if ! make install >> "${STATE_DIR}/build.log" 2>&1; then _undo_openssl_engine_workaround; do_abort "Install failed."; fi
+    echo "$_module_install_output" >> "/var/log/build.log"
+    if ! make install >> "/var/log/build.log" 2>&1; then _undo_openssl_engine_workaround; do_abort "Install failed."; fi
     _undo_openssl_engine_workaround
     _kernelrelease_str=$(make -s kernelrelease)
     _dirty_str=-dirty
     grep -qe "$_dirty_str$" <<< "$_module_install_output" && ! grep -qe "$_dirty_str$" <<< "$_kernelrelease_str" && _kernelrelease_str+=$_dirty_str
-    echo "$_kernelrelease_str" > "$LAST_KERNEL_FILE"
+    LAST_TESTED_KERNEL="$_kernelrelease_str"
 }
 
 install_from_rpm() {
@@ -95,15 +94,15 @@ install_from_rpm() {
     local rpms_to_install=()
     
     for pkg in kernel-core kernel-modules kernel-modules-core kernel; do
-        local rpm_filename="${pkg}-${release}.${arch}.rpm"
+        local rpm_filename="${pkg}-${release}.rpm"
         local rpm_path="${rpm_cache_dir}/${rpm_filename}"
         local rpm_url="${base_url}/${rpm_filename}"
         if [ ! -f "$rpm_path" ]; then
-            log "Downloading ${rpm_filename}..."; if ! wget -q -O "$rpm_path" "$rpm_url"; then rm -f "$rpm_path"; do_abort "Download failed."; fi
+            log "Downloading ${rpm_filename}..."; if ! wget -q -O "$rpm_path" "$rpm_url"; then rm -f "$rpm_path"; log "Download failed. Ignore the error"; fi
         fi
         rpms_to_install+=("$rpm_path")
     done
     
-    if ! dnf install -y "${rpms_to_install[@]}" > "${STATE_DIR}/install.log" 2>&1; then do_abort "RPM install failed."; fi
-    echo "$release" > "$LAST_KERNEL_FILE"
+    if ! dnf install -y "${rpms_to_install[@]}" > "/var/log/install.log" 2>&1; then do_abort "RPM install failed."; fi
+    LAST_TESTED_KERNEL="$release"
 }

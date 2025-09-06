@@ -33,8 +33,8 @@ setup_test() {
 # Use it to check if the bad condition occurred.
 #
 # EXIT CODES ARE CRITICAL:
-#   - exit 0: The commit is BAD (test succeeded, bug was reproduced).
-#   - exit 1: The commit is GOOD (test failed, bug was not reproduced).
+#   - exit 1: The commit is BAD (test fails).
+#   - exit 0: The commit is GOOD (test succeeds).
 #
 on_test() {
     echo "REPRODUCER: Running on_test for verification..."
@@ -53,9 +53,9 @@ on_test() {
         echo "REPRODUCER: SUCCESS. New vmcore found at ${latest_dump}."
         # Clean up the crash dump so it's not found on the next run
         rm -rf "${latest_dump}"
-        return 0 # BAD commit
+        return 0 # GOOD commit
     else
         echo "REPRODUCER: FAILURE. No new vmcore file found."
-        return 1 # GOOD commit
+        return 1 # BAD commit
     fi
 }
