@@ -93,14 +93,18 @@ install_from_rpm() {
     local rpm_cache_dir="$RPM_CACHE_DIR"; mkdir -p "$rpm_cache_dir"
     local rpms_to_install=()
     
-    for pkg in kernel-core kernel-modules kernel-modules-core kernel; do
+    for pkg in kernel-core kernel-modules kernel-modules-core kernel-modules-extra kernel; do
         local rpm_filename="${pkg}-${release}.rpm"
         local rpm_path="${rpm_cache_dir}/${rpm_filename}"
         local rpm_url="${base_url}/${rpm_filename}"
         if [ ! -f "$rpm_path" ]; then
-            log "Downloading ${rpm_filename}..."; if ! wget -q -O "$rpm_path" "$rpm_url"; then rm -f "$rpm_path"; log "Download failed. Ignore the error"; fi
+            log "Downloading ${rpm_filename}..."; 
+            if ! wget -q -O "$rpm_path" "$rpm_url"; then
+                rm -f "$rpm_path"; log "Download failed. Ignore the error"; 
+            else
+                rpms_to_install+=("$rpm_path")
+            fi
         fi
-        rpms_to_install+=("$rpm_path")
     done
     
     if ! dnf install -y "${rpms_to_install[@]}" > "/var/log/install.log" 2>&1; then do_abort "RPM install failed."; fi
