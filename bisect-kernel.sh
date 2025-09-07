@@ -5,9 +5,11 @@
 #
 # Iterate over all open file descriptors for the current process
 # --- Configuration ---
+source /usr/local/bin/kernel-auto-bisect/lib.sh
+
 CONFIG_FILE="/usr/local/bin/kdump-bisect/bisect.conf"
 HANDLER_DIR="/usr/local/bin/kdump-bisect/handlers"
-LOG_FILE="/var/log/kdump-bisect.log"
+LOG_FILE="$WORK_DIR/kdump-bisect.log"
 
 # --- In-memory state variables (managed by CRIU) ---
 LAST_TESTED_KERNEL=""
@@ -37,11 +39,6 @@ log() { echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"; }
 
 # --- Kernel and Grub Management ---
 set_boot_kernel() { log "Setting default boot kernel to: $1"; grubby --set-default "$1"; }
-
-# --- CRIU Daemon Communication ---
-SIGNAL_DIR="/var/run/kdump-bisect"
-RESTORE_FLAG="$SIGNAL_DIR/restore_flag"
-CHECKPOINT_SIGNAL="$SIGNAL_DIR/checkpoint_request"
 
 signal_checkpoint_reboot() {
     mkdir -p "$SIGNAL_DIR"
