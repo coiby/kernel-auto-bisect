@@ -104,6 +104,8 @@ install_from_rpm() {
             else
                 rpms_to_install+=("$rpm_path")
             fi
+        else
+                rpms_to_install+=("$rpm_path")
         fi
     done
     
