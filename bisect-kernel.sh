@@ -40,45 +40,40 @@ set_boot_kernel() { log "Setting default boot kernel to: $1"; grubby --set-defau
 
 # --- CRIU Daemon Communication ---
 SIGNAL_DIR="/var/run/kdump-bisect"
+RESTORE_FLAG="$SIGNAL_DIR/restore_flag"
+CHECKPOINT_SIGNAL="$SIGNAL_DIR/checkpoint_request"
 
 signal_checkpoint_reboot() {
     mkdir -p "$SIGNAL_DIR"
     log "Signaling daemon to checkpoint and reboot"
-    touch "$SIGNAL_DIR/checkpoint_request"
     
-    # Wait for the daemon to process our request and reboot the system
+    if [[ $1 == reboot ]]; then
+       printf "sync\n systemctl reboot" > "$CHECKPOINT_SIGNAL"
+    elif [[ $1 == panic ]]; then
+       printf "sync\n echo 1 > /proc/sys/kernel/sysrq\n echo c > /proc/sysrq-trigger" > "$CHECKPOINT_SIGNAL"
+    fi 
+
+    # Wait for the daemon to process our request and reboot/panic the system
     # If we're still running after 10 seconds, something went wrong
     local count=0
-    while [[ -f "$SIGNAL_DIR/checkpoint_request" ]] && [[ $count -lt 10 ]]; do
+    local MAX_WAIT=20
+    while [[ -f "$RESTORE_FLAG" ]] && [[ $count -lt $MAX_WAIT ]]; do
         sleep 1
         count=$((count + 1))
     done
     
-    sleep 6
-    if [[ $count -ge 10 ]]; then
+    if [[ $count -ge $MAX_WAIT ]]; then
         log "ERROR: Daemon failed to process checkpoint request"
-	exit 1
+        exit 1
     fi
 }
 
+signal_checkpoint_reboot() {
+    signal_checkpoint "reboot"
+}
+
 signal_checkpoint_panic() {
-    mkdir -p "$SIGNAL_DIR"
-    log "Signaling daemon to checkpoint and panic"
-    touch "$SIGNAL_DIR/panic_request"
-    
-    # Wait for the daemon to process our request and panic the system
-    # If we're still running after 30 seconds, something went wrong
-    local count=0
-    while [[ -f "$SIGNAL_DIR/panic_request" ]] && [[ $count -lt 10 ]]; do
-        sleep 1
-        count=$((count + 1))
-    done
-    
-    sleep 5
-    if [[ $count -ge 10 ]]; then
-        log "ERROR: Daemon failed to process checkpoint request"
-	exit 1
-    fi
+    signal_checkpoint "panic"
 }
 
 prepare_reboot() {

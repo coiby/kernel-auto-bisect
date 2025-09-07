@@ -31,7 +31,7 @@ WORK_DIR="/var/local/kdump-bisect-criu"
 SIGNAL_DIR="/var/run/kdump-bisect"
 DUMP_DIR="$WORK_DIR/dump"
 CHECKPOINT_SIGNAL="$SIGNAL_DIR/checkpoint_request"
-RESTORE_SIGNAL="$SIGNAL_DIR/restore_request" 
+RESTORE_FLAG="$SIGNAL_DIR/restore_flag"
 PANIC_SIGNAL="$SIGNAL_DIR/panic_request"
 LOG_FILE="/var/log/criu-daemon.log"
 BISECT_SCRIPT="/usr/local/bin/kdump-bisect/bisect-kernel.sh"
@@ -61,7 +61,7 @@ do_checkpoint() {
     fi
     
     log "Checkpointing bisection process (PID: $bisect_pid)"
-    log_num=$(ls -l $WORK_DIR/dump*.log 2> /dev/null |wc -l)
+    log_num=$(ls -l $WORK_DIR/dump*_cmd.log 2> /dev/null |wc -l)
     ((++log_num))
     dump_log=$WORK_DIR/dump${log_num}.log
     cmd_log=$WORK_DIR/dump${log_num}_cmd.log
@@ -82,7 +82,7 @@ do_restore() {
         # prevent "PID mismatch on restore" https://criu.org/When_C/R_fails
         unshare -p -m --fork --mount-proc
 
-        log_num=$(ls -l $WORK_DIR/restore*.log 2> /dev/null |wc -l)
+        log_num=$(ls -l $WORK_DIR/restore*_cmd.log 2> /dev/null |wc -l)
         ((++log_num))
         restore_log=$WORK_DIR/retore${log_num}.log
         cmd_log=$WORK_DIR/retore${log_num}_cmd.log
@@ -90,7 +90,7 @@ do_restore() {
             log "Restore successful"
             # Clean up checkpoint files after successful restore
             rm -rf "$DUMP_DIR"/*
-	    sync
+            touch "$RESTORE_FLAG"
             return 0
         else
             log "ERROR: Restore failed"
@@ -102,83 +102,33 @@ do_restore() {
     fi
 }
 
-# Handle checkpoint + reboot request
-handle_checkpoint_reboot() {
-    log "Received checkpoint+reboot request"
+# Handle checkpoint  
+handle_checkpoint() {
+    log "Received checkpoint+panic request"
+    if ! grep -e sysrq-trigger -e reboot "$CHECKPOINT_SIGNAL"; then
+        return 1
+    fi
     if do_checkpoint; then
-        log "Initiating system reboot"
-        sleep 2  # Give some time for the log to be written
-	sync
-        reboot
+        log "Process request: $(< $CHECKPOINT_SIGNAL)"
+        bash "$CHECKPOINT_SIGNAL"
+        exit 0
     else
-        log "Checkpoint failed, aborting reboot"
+        log "Checkpoint failed"
         rm -f "$CHECKPOINT_SIGNAL"
     fi
-}
-
-# Handle checkpoint + panic request  
-handle_checkpoint_panic() {
-    log "Received checkpoint+panic request"
-    if do_checkpoint; then
-        log "Triggering kernel panic"
-        sleep 2  # Give some time for the log to be written
-	sync
-        echo 1 > /proc/sys/kernel/sysrq
-        echo c > /proc/sysrq-trigger
-        # Fallback if panic fails
-        sleep 10
-        log "Panic failed, falling back to reboot"
-        reboot
-    else
-        log "Checkpoint failed, aborting panic"
-        rm -f "$PANIC_SIGNAL"
-    fi
-}
-
-# Handle restore request (called on boot)
-handle_restore() {
-    log "Received restore request"
-    if do_restore; then
-        log "Process restored successfully"
-    else
-        log "Restore failed or no checkpoint available"
-    fi
-    rm -f "$RESTORE_SIGNAL"
 }
 
 # Main daemon loop
 main_loop() {
     while true; do
         if [[ -f "$CHECKPOINT_SIGNAL" ]]; then
-            handle_checkpoint_reboot
-            rm -f "$CHECKPOINT_SIGNAL"
-        elif [[ -f "$PANIC_SIGNAL" ]]; then
-            handle_checkpoint_panic
-            rm -f "$PANIC_SIGNAL"
-        elif [[ -f "$RESTORE_SIGNAL" ]]; then
-            handle_restore
+            handle_checkpoint
         fi
-        
         sleep 1
     done
 }
 
-# Handle script arguments
-case "${1:-daemon}" in
-    daemon)
-        init_daemon
-        if  [ -d "$DUMP_DIR" ] && ls "$DUMP_DIR"/core-*.img 1> /dev/null 2>&1; then
-            log "Found checkpoint on boot, restoring"
-            (do_restore) &
-        fi
-        main_loop
-        ;;
-    restore)
-        # Called by systemd on boot to restore any existing checkpoint
-        init_daemon
-        ;;
-    *)
-        echo "Usage: $0 [daemon|restore]"
-        exit 1
-        ;;
-esac
+rm -f "$CHECKPOINT_SIGNAL"
+init_daemon
+(do_restore) &
+main_loop
