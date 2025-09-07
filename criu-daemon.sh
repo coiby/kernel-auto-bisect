@@ -25,16 +25,8 @@ single_instance_lock()
 }
 
 single_instance_lock
+source /usr/local/bin/kernel-auto-bisect/lib.sh
 
-# Configuration
-WORK_DIR="/var/local/kdump-bisect-criu"
-SIGNAL_DIR="/var/run/kdump-bisect"
-DUMP_DIR="$WORK_DIR/dump"
-CHECKPOINT_SIGNAL="$SIGNAL_DIR/checkpoint_request"
-RESTORE_FLAG="$SIGNAL_DIR/restore_flag"
-PANIC_SIGNAL="$SIGNAL_DIR/panic_request"
-LOG_FILE="/var/log/criu-daemon.log"
-BISECT_SCRIPT="/usr/local/bin/kdump-bisect/bisect-kernel.sh"
 
 # Logging
 log() { 

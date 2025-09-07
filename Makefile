@@ -2,7 +2,7 @@
 
 # Installation directories
 PREFIX ?= /usr/local
-BIN_DIR := $(PREFIX)/bin/kdump-bisect
+BIN_DIR := $(PREFIX)/bin/kernel-auto-bisect
 HANDLER_DIR_TARGET := $(BIN_DIR)/handlers
 SERVICE_DIR := /etc/systemd/system
 CONFIG_FILE_TARGET := $(BIN_DIR)/bisect.conf
