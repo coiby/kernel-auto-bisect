@@ -99,7 +99,7 @@ install_from_rpm() {
         local rpm_url="${base_url}/${rpm_filename}"
         if [ ! -f "$rpm_path" ]; then
             log "Downloading ${rpm_filename}..."; 
-            if ! wget -q -O "$rpm_path" "$rpm_url"; then
+            if ! wget --no-check-certificate -q -O "$rpm_path" "$rpm_url"; then
                 rm -f "$rpm_path"; log "Download failed. Ignore the error"; 
             else
                 rpms_to_install+=("$rpm_path")
