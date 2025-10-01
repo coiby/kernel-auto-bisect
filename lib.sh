@@ -2,22 +2,20 @@
 # Configuration
 BIN_DIR=/usr/local/bin/kernel-auto-bisect
 WORK_DIR="/var/local/kernel-auto-bisect"
-SIGNAL_DIR="/var/run/kdump-bisect"
+SIGNAL_DIR="$WORK_DIR/signal"
 DUMP_DIR="$WORK_DIR/dump"
 CHECKPOINT_SIGNAL="$SIGNAL_DIR/checkpoint_request"
 RESTORE_FLAG="$SIGNAL_DIR/restore_flag"
 PANIC_SIGNAL="$SIGNAL_DIR/panic_request"
-LOG_FILE="/var/log/criu-daemon.log"
-BISECT_SCRIPT="/usr/local/bin/kdump-bisect/bisect-kernel.sh"
 
-CONFIG_FILE="/usr/local/bin/kdump-bisect/bisect.conf"
-HANDLER_DIR="/usr/local/bin/kdump-bisect/handlers"
-LOG_FILE="$WORK_DIR/kdump-bisect.log"
+CONFIG_FILE="$BIN_DIR/bisect.conf"
+HANDLER_DIR="$BIN_DIR/handlers"
+LOG_FILE="$WORK_DIR/main.log"
 
-# --- In-memory state variables (managed by CRIU) ---
+CRIU_LOG_FILE="$WORK_DIR/criu-daemon.log"
+BISECT_SCRIPT="$BIN_DIR/kab.sh"
+
 LAST_TESTED_KERNEL=""
-PANIC_OCCURRED=false
-RUN_COUNT=1
 ORIGINAL_KERNEL=""
 GOOD_REF=""
 BAD_REF=""
@@ -27,12 +25,12 @@ load_config_and_handlers() {
     if [ ! -f "$CONFIG_FILE" ]; then echo "FATAL: Config file missing!" | tee -a "$LOG_FILE"; exit 1; fi
     source "$CONFIG_FILE"
     for handler in "${HANDLER_DIR}"/*.sh; do if [ -f "$handler" ]; then source "$handler"; fi; done
-    rm -rf /var/local/kdump-bisect-criu/dump/*
+    rm -rf $DUMP_DIR/*
     # 1. setsid somehow doesn't work, checkpointing will fail with "The criu itself is within dumped tree"
     #    setsid criu-daemon.sh < /dev/null &> log_file &
     # 2. Using a systemd service to start criu-daemon.sh somehow can lead to many
     #    dump/restore issues like "can't write lsm profile"
-    systemd-run --unit=checkpoint-test /usr/local/bin/kdump-bisect/criu-daemon.sh
+    systemd-run --unit=checkpoint-test $BIN_DIR/criu-daemon.sh
 }
 
 
@@ -115,7 +113,6 @@ do_abort() {
     fi
     #remove_last_kernel
     #rm -rf "$RPM_FAKE_REPO_PATH"
-    systemctl disable kdump-bisect.service
     log "To perform a full cleanup of all intermediate kernels, please do so manually."
     exit 1
 }
@@ -175,12 +172,17 @@ verify_intial_commits() {
     fi
 }
 
-
 # --- Core Testing Functions ---
 run_test() {
     # Wrapper for the actual test strategy
     run_test_strategy
     return $?
+}
+
+get_current_commit() {
+    local repo_dir; if [[ "$INSTALL_STRATEGY" == "rpm" ]]; then repo_dir="$RPM_FAKE_REPO_PATH"; else repo_dir="$KERNEL_SRC_DIR"; fi
+    cd "$repo_dir"
+    git rev-parse HEAD
 }
 
 test_commit() {
@@ -218,7 +220,7 @@ generate_final_report() {
         final_report="First bad commit found:\nCommit: ${bad_commit}\n$(git log --oneline -1 $bad_commit)"
     fi
     
-    echo -e "$final_report" > "/var/log/bisect_final_log.txt"
-    log "Final report saved to /var/log/bisect_final_log.txt"
+    echo -e "$final_report" > "$WORK_DIR/bisect_final_log.txt"
+    log "Final report saved to $WORK_DIR/bisect_final_log.txt"
     echo -e "$final_report"
 }

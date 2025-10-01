@@ -1,14 +1,13 @@
-# Makefile for kdump-auto-bisect tool (Modular Framework)
+# Makefile for kernel-auto-bisect tool (Modular Framework)
 
 # Installation directories
 PREFIX ?= /usr/local
 BIN_DIR := $(PREFIX)/bin/kernel-auto-bisect
 HANDLER_DIR_TARGET := $(BIN_DIR)/handlers
-SERVICE_DIR := /etc/systemd/system
 CONFIG_FILE_TARGET := $(BIN_DIR)/bisect.conf
 
 # Source files and directories
-SCRIPT_SRC := bisect-kernel.sh
+SCRIPT_SRC := kab.sh
 CRIU_DAEMON_SRC := criu-daemon.sh
 CONFIG_SRC := bisect.conf
 HANDLER_SRC_DIR := handlers
@@ -22,8 +21,8 @@ help:
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "Targets:"
-	@echo "  install      Install the bisection scripts, CRIU daemon, handlers, and systemd services."
-	@echo "  uninstall    Remove all installed files and services."
+	@echo "  install      Install the bisection scripts, CRIU daemon and handlers."
+	@echo "  uninstall    Remove all installed files."
 	@echo "  help         Show this help message."
 
 install:
@@ -31,7 +30,7 @@ install:
 		echo "Please run as root or with sudo."; \
 		exit 1; \
 	fi
-	@echo "Installing kdump-auto-bisect tool (modular)..."
+	@echo "Installing kernel-auto-bisect tool (modular)..."
 	@echo "Creating directories: $(BIN_DIR) and $(HANDLER_DIR_TARGET)"
 	@mkdir -p $(HANDLER_DIR_TARGET)
 
@@ -53,22 +52,20 @@ install:
 	fi
 	@echo ""
 	@echo "Installation complete."
-	@echo "IMPORTANT: Please edit the configuration file at $(CONFIG_FILE_TARGET) before enabling the services."
+	@echo "IMPORTANT: Please edit the configuration file at $(CONFIG_FILE_TARGET) before starting the bisection."
 
 uninstall:
 	@if [ "$(EUID)" -ne 0 ]; then \
 		echo "Please run as root or with sudo."; \
 		exit 1; \
 	fi
-	@echo "Uninstalling kdump-auto-bisect tool..."
-	@echo "Disabling and stopping services..."
+	@echo "Uninstalling kernel-auto-bisect tool..."
 
 	@echo "Removing script directory: $(BIN_DIR)"
 	@rm -rf $(BIN_DIR)
 	@echo ""
 	@echo "Uninstallation complete."
-	@echo "Note: CRIU work directory /var/local/kdump-bisect-criu and fake RPM repo are not removed."
+	@echo "Note: work directory /var/local/kernel-auto-bisect and fake RPM repo are not removed."
 
 clean:
 	@echo "Nothing to clean."
-

@@ -30,7 +30,7 @@ source /usr/local/bin/kernel-auto-bisect/lib.sh
 
 # Logging
 log() { 
-    echo "$(date '+%Y-%m-%d %H:%M:%S') [CRIU-DAEMON] - $1" | tee -a "$LOG_FILE"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [CRIU-DAEMON] - $1" | tee -a "$CRIU_LOG_FILE"
 }
 
 # Initialize
@@ -61,7 +61,7 @@ do_checkpoint() {
         log "Checkpoint successful"
         return 0
     else
-	rm -rf "$DUMP_DIR"/*
+        rm -rf "$DUMP_DIR"/*
         log "ERROR: Checkpoint failed"
         return 1
     fi
@@ -74,15 +74,14 @@ do_restore() {
         # prevent "PID mismatch on restore" https://criu.org/When_C/R_fails
         unshare -p -m --fork --mount-proc
 
-        log_num=$(ls -l $WORK_DIR/restore*_cmd.log 2> /dev/null |wc -l)
+        log_num=$(ls -l $SIGNAL_DIR/restore*_cmd.log 2> /dev/null |wc -l)
         ((++log_num))
-        restore_log=$WORK_DIR/retore${log_num}.log
-        cmd_log=$WORK_DIR/retore${log_num}_cmd.log
+        restore_log=$SIGNAL_DIR/retore${log_num}.log
+        cmd_log=$SIGNAL_DIR/retore${log_num}_cmd.log
         if criu restore -v4 -D "$DUMP_DIR" --shell-job --restore-detached -o $restore_log &> $cmd_log ;  then
             log "Restore successful"
             # Clean up checkpoint files after successful restore
             rm -rf "$DUMP_DIR"/*
-            touch "$RESTORE_FLAG"
             return 0
         else
             log "ERROR: Restore failed"
