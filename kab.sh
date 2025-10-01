@@ -43,12 +43,6 @@ should_continue_bisect() {
     git bisect log > /dev/null 2>&1
 }
 
-get_current_commit() {
-    local repo_dir; if [[ "$INSTALL_STRATEGY" == "rpm" ]]; then repo_dir="$RPM_FAKE_REPO_PATH"; else repo_dir="$KERNEL_SRC_DIR"; fi
-    cd "$repo_dir"
-    git rev-parse HEAD
-}
-
 main_bisect_loop() {
     local repo_dir; if [[ "$INSTALL_STRATEGY" == "rpm" ]]; then repo_dir="$RPM_FAKE_REPO_PATH"; else repo_dir="$KERNEL_SRC_DIR"; fi
     cd "$repo_dir"
@@ -80,8 +74,6 @@ main_bisect_loop() {
     do_abort "Bisection incomplete"
 }
 
-
-# Note: process_result function removed - now handled directly in main_bisect_loop
 
 # --- Main Entry Point ---
 # Load configuration and handlers
