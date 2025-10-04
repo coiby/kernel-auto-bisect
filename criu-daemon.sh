@@ -55,7 +55,7 @@ do_checkpoint() {
 	((++log_num))
 	dump_log=$WORK_DIR/dump${log_num}.log
 	cmd_log=$WORK_DIR/dump${log_num}_cmd.log
-	if criu dump -t "$bisect_pid" -D "$DUMP_DIR" -v4 -o $dump_log &>$cmd_log; then
+	if criu dump -t "$bisect_pid" -D "$DUMP_DIR" --shell-job -v4 -o $dump_log &>$cmd_log; then
 		log "Checkpoint successful"
 		return 0
 	else
