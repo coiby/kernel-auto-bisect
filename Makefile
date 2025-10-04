@@ -8,6 +8,7 @@ CONFIG_FILE_TARGET := $(BIN_DIR)/bisect.conf
 
 # Source files and directories
 SCRIPT_SRC := kab.sh
+LIB_SRC := lib.sh
 CRIU_DAEMON_SRC := criu-daemon.sh
 CONFIG_SRC := bisect.conf
 HANDLER_SRC_DIR := handlers
@@ -37,6 +38,8 @@ install:
 	@echo "Copying orchestrator script to $(BIN_DIR)/$(SCRIPT_SRC)"
 	@cp $(SCRIPT_SRC) $(BIN_DIR)/
 	@chmod +x $(BIN_DIR)/$(SCRIPT_SRC)
+	@cp $(LIB_SRC) $(BIN_DIR)/
+	@chmod +x $(BIN_DIR)/$(LIB_SRC)
 
 	@echo "Copying CRIU daemon to $(BIN_DIR)/$(CRIU_DAEMON_SRC)"
 	@cp $(CRIU_DAEMON_SRC) $(BIN_DIR)/

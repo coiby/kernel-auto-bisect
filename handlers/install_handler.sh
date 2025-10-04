@@ -96,6 +96,10 @@ install_from_rpm() {
 	cd "$RPM_FAKE_REPO_PATH"
 	git checkout -q "$commit_to_install"
 
+	if ! command -v wget; then
+		dnf install wget -yq
+	fi
+
 	local core_url=$(cat k_url)
 	local base_url=$(dirname "$core_url")
 	local release=$(cat k_rel)
