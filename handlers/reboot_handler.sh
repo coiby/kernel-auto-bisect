@@ -5,6 +5,8 @@
 
 run_reboot_strategy() {
 	prepare_reboot
+
+	[[ -z $REBOOT_STRATEGY ]] && REBOOT_STRATEGY=reboot
 	case "$REBOOT_STRATEGY" in
 	reboot) do_full_reboot ;;
 	kexec) do_kexec_reboot ;;
