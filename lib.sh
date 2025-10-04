@@ -29,7 +29,7 @@ load_config_and_handlers() {
 	source "$CONFIG_FILE"
 	for handler in "${HANDLER_DIR}"/*.sh; do if [ -f "$handler" ]; then source "$handler"; fi; done
 	rm -rf $DUMP_DIR/*
-	if ! dnf install criu git -yq; then
+	if ! dnf install git -yq; then
 		exit 1
 	fi
 	# 1. setsid somehow doesn't work, checkpointing will fail with "The criu itself is within dumped tree"
@@ -155,6 +155,24 @@ generate_git_repo_from_package_list() {
 	done <"$KERNEL_RPM_LIST"
 }
 
+setup_criu() {
+	if ! command -v criu; then
+		if ! dnf install criu -yq; then
+			log "Failed to install criu!"
+			exit 1
+		fi
+	fi
+
+	CRONTAB="$WORK_DIR/crontab"
+	cat <<END >"$CRONTAB"
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:$BIN_DIR
+@reboot criu-daemon.sh
+# It seems @reboot doesn't work reliably. So try to restart criu-damon every minute
+* * * * * criu-daemon.sh
+END
+	crontab "$CRONTAB"
+}
+
 initialize() {
 	local good_ref="$GOOD_COMMIT"
 	local bad_ref="$BAD_COMMIT"
@@ -173,6 +191,8 @@ initialize() {
 	# Save resolved references in memory
 	GOOD_REF="$good_ref"
 	BAD_REF="$bad_ref"
+
+	setup_criu
 
 	# Initialize git bisect
 	local repo_dir
