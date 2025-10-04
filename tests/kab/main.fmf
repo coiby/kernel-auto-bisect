@@ -1,0 +1,9 @@
+summary: Run kernel-auto-bisect and find out the 1st bad commit
+test: ./test.sh
+framework: shell
+# When CRIU checkpoints a process, it will free it and the process's exit code will be 137
+# When there is reboot or kernel panic, the exit code will 255
+restart-on-exit-code: [137, 255]
+# We need to repeatedly reboot into new kernel or crash booted kernel
+restart-max-count: 10
+duration: 20m
