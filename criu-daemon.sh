@@ -67,6 +67,7 @@ do_checkpoint() {
 
 # Restore the bisection process
 do_restore() {
+	rm -f "$CHECKPOINT_SIGNAL"
 	if [ -d "$DUMP_DIR" ] && ls "$DUMP_DIR"/core-*.img 1>/dev/null 2>&1; then
 		log "Restoring bisection process from checkpoint"
 		# prevent "PID mismatch on restore" https://criu.org/When_C/R_fails
@@ -78,6 +79,7 @@ do_restore() {
 		cmd_log=$SIGNAL_DIR/retore${log_num}_cmd.log
 		if criu restore -v4 -D "$DUMP_DIR" --shell-job --restore-detached -o $restore_log &>$cmd_log; then
 			log "Restore successful"
+			touch "$RESTORE_FLAG"
 			# Clean up checkpoint files after successful restore
 			rm -rf "$DUMP_DIR"/*
 			return 0
@@ -119,5 +121,5 @@ main_loop() {
 
 rm -f "$CHECKPOINT_SIGNAL"
 init_daemon
-(do_restore) &
+do_restore
 main_loop
