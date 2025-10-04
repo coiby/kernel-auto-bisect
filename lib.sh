@@ -29,6 +29,9 @@ load_config_and_handlers() {
 	source "$CONFIG_FILE"
 	for handler in "${HANDLER_DIR}"/*.sh; do if [ -f "$handler" ]; then source "$handler"; fi; done
 	rm -rf $DUMP_DIR/*
+	if ! dnf install criu git -yq; then
+		exit 1
+	fi
 	# 1. setsid somehow doesn't work, checkpointing will fail with "The criu itself is within dumped tree"
 	#    setsid criu-daemon.sh < /dev/null &> log_file &
 	# 2. Using a systemd service to start criu-daemon.sh somehow can lead to many
@@ -49,7 +52,7 @@ get_original_kernel() {
 	grubby --info=/boot/vmlinuz-$(uname -r) | grep -E "^kernel=" | sed 's/kernel=//;s/"//g'
 }
 
-signal_checkpoint_reboot() {
+signal_checkpoint() {
 	mkdir -p "$SIGNAL_DIR"
 	log "Signaling daemon to checkpoint and reboot"
 
@@ -63,7 +66,7 @@ signal_checkpoint_reboot() {
 	# If we're still running after 10 seconds, something went wrong
 	local count=0
 	local MAX_WAIT=20
-	while [[ -f "$RESTORE_FLAG" ]] && [[ $count -lt $MAX_WAIT ]]; do
+	while [[ ! -f "$RESTORE_FLAG" ]] && [[ $count -lt $MAX_WAIT ]]; do
 		sleep 1
 		count=$((count + 1))
 	done
