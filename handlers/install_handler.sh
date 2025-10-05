@@ -93,6 +93,9 @@ install_from_rpm() {
 	local commit_to_install=$1
 	log "Strategy: install_from_rpm for commit ${commit_to_install}"
 
+	# No need for bisect but needed for verifying initial good/bad commit
+	git checkout -q "$commit_to_install"
+
 	if ! command -v wget; then
 		dnf install wget -yq
 	fi
