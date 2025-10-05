@@ -71,6 +71,7 @@ signal_checkpoint() {
 		count=$((count + 1))
 	done
 
+	rm -f "$RESTORE_FLAG"
 	if [[ $count -ge $MAX_WAIT ]]; then
 		log "ERROR: Daemon failed to process checkpoint request"
 		exit 1
