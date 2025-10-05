@@ -6,6 +6,7 @@
 
 run_test_strategy() {
 	log "--- Phase: RUN_TEST on $(uname -r) ---"
+	[[ -z $RUNS_PER_COMMIT ]] && RUNS_PER_COMMIT=1
 	case "$TEST_STRATEGY" in
 	panic) run_panic_test ;;
 	simple) run_simple_test ;;
