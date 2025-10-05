@@ -2,6 +2,7 @@
 # Configuration
 BIN_DIR=/usr/local/bin/kernel-auto-bisect
 WORK_DIR="/var/local/kernel-auto-bisect"
+RPM_FAKE_REPO_PATH="$WORK_DIR/rpm_repo"
 SIGNAL_DIR="$WORK_DIR/signal"
 DUMP_DIR="$WORK_DIR/dump"
 CHECKPOINT_SIGNAL="$SIGNAL_DIR/checkpoint_request"
