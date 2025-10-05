@@ -7,6 +7,7 @@ run_install_strategy() {
 	local commit_to_install=$1
 	log "--- Phase: INSTALL ---"
 
+	safe_cd "$GIT_REPO"
 	remove_last_kernel
 	local kernel_version_string
 	case "$INSTALL_STRATEGY" in
@@ -50,8 +51,6 @@ _undo_openssl_engine_workaround() {
 install_from_git() {
 	local commit_to_install=$1
 	log "Strategy: install_from_git for commit ${commit_to_install}"
-	cd "$KERNEL_SRC_DIR"
-	git checkout -q "$commit_to_install"
 
 	yes '' | make localmodconfig
 	sed -i "/rhel.pem/d" .config
@@ -93,8 +92,6 @@ install_from_git() {
 install_from_rpm() {
 	local commit_to_install=$1
 	log "Strategy: install_from_rpm for commit ${commit_to_install}"
-	cd "$RPM_FAKE_REPO_PATH"
-	git checkout -q "$commit_to_install"
 
 	if ! command -v wget; then
 		dnf install wget -yq
