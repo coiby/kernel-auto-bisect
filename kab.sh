@@ -65,7 +65,6 @@ main_bisect_loop() {
 		if echo "$bisect_output" | grep -q "is the first bad commit"; then
 			log "--- BISECTION FINISHED ---"
 			generate_final_report "$commit"
-			finish
 			return
 		fi
 	done
