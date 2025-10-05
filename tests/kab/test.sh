@@ -1,6 +1,9 @@
 #!/bin/bash
 # vim: dict+=/usr/share/beakerlib/dictionary.vim cpt=.,w,b,u,t,i,k
 set -x
+
+TMT_SLEEP_MARK=5.421379
+
 if [[ $TMT_TEST_RESTART_COUNT == 0 ]]; then
 	cd "$TMT_TREE" || exit 1
 	make install
@@ -21,6 +24,7 @@ GOOD_COMMIT=$GOOD_COMMIT
 BAD_COMMIT=$BAD_COMMIT
 REPRODUCER_SCRIPT=$TEST_SCRIPT
 KERNEL_RPM_LIST=$KERNEL_RPM_LIST
+TMT_SLEEP_MARK=$TMT_SLEEP_MARK
 END
 
 	cat <<END >$KERNEL_RPM_LIST
@@ -63,8 +67,8 @@ else
 	cd "$GIT_REPO" || exit 1
 
 	until git bisect log | grep -q "first bad commit" || [[ $wait_time -ge $MAX_WAIT_TIME ]]; do
-		sleep 5
-		wait_time=$((wait_time + 5))
+		sleep $TMT_SLEEP_MARK
+		wait_time=$((wait_time + SLEEP_TIME))
 	done
 	if [[ $wait_time -ge $MAX_WAIT_TIME ]]; then
 		echo "Failed to get 1st bad commit"
