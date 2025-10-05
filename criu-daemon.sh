@@ -26,23 +26,19 @@ single_instance_lock() {
 single_instance_lock
 source /usr/local/bin/kernel-auto-bisect/lib.sh
 
-# Logging
 log() {
 	echo "$(date '+%Y-%m-%d %H:%M:%S') [CRIU-DAEMON] - $1" | tee -a "$CRIU_LOG_FILE"
 }
 
-# Initialize
 init_daemon() {
 	mkdir -p "$WORK_DIR" "$DUMP_DIR" "$DUMP_LOG_DIR" "$SIGNAL_DIR"
 	log "CRIU daemon started, monitoring for signals"
 }
 
-# Find the bisection process PID
 find_bisect_pid() {
 	pgrep -f "$BISECT_SCRIPT" | head -n1
 }
 
-# Checkpoint the bisection process
 do_checkpoint() {
 	local bisect_pid=$(find_bisect_pid)
 	if [[ -z "$bisect_pid" ]]; then
@@ -65,7 +61,6 @@ do_checkpoint() {
 	fi
 }
 
-# Restore the bisection process
 do_restore() {
 	rm -f "$CHECKPOINT_SIGNAL"
 	if [ -d "$DUMP_DIR" ] && ls "$DUMP_DIR"/core-*.img 1>/dev/null 2>&1; then
@@ -93,23 +88,28 @@ do_restore() {
 	fi
 }
 
-# Handle checkpoint
 handle_checkpoint() {
+	local _cmd_file=
+
+	_cmd_file=${CHECKPOINT_SIGNAL}_cmd
+
+	# delete $CHECKPOINT_SIGNAL to avoid it being repeatedly consumed
+	mv $CHECKPOINT_SIGNAL "$_cmd_file"
+	rm -f "$CHECKPOINT_SIGNAL"
+
 	log "Received checkpoint+panic request"
-	if ! grep -e sysrq-trigger -e reboot "$CHECKPOINT_SIGNAL"; then
+	if ! grep -e sysrq-trigger -e reboot "$_cmd_file"; then
 		return 1
 	fi
 	if do_checkpoint; then
-		log "Process request: $(<$CHECKPOINT_SIGNAL)"
-		bash "$CHECKPOINT_SIGNAL"
+		log "Process request: $(<$_cmd_file)"
+		bash "$_cmd_file"
 		exit 0
 	else
 		log "Checkpoint failed"
-		rm -f "$CHECKPOINT_SIGNAL"
 	fi
 }
 
-# Main daemon loop
 main_loop() {
 	while true; do
 		if [[ -f "$CHECKPOINT_SIGNAL" ]]; then
@@ -119,7 +119,6 @@ main_loop() {
 	done
 }
 
-rm -f "$CHECKPOINT_SIGNAL"
 init_daemon
 do_restore
 main_loop
