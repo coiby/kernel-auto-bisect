@@ -2,7 +2,7 @@
 # Configuration
 BIN_DIR=/usr/local/bin/kernel-auto-bisect
 WORK_DIR="/var/local/kernel-auto-bisect"
-RPM_FAKE_REPO_PATH="$WORK_DIR/rpm_repo"
+GIT_REPO="$WORK_DIR/git_repo"
 SIGNAL_DIR="$WORK_DIR/signal"
 DUMP_DIR="$WORK_DIR/dump"
 DUMP_LOG_DIR="$WORK_DIR/dump_logs"
@@ -39,6 +39,13 @@ load_config_and_handlers() {
 	# 2. Using a systemd service to start criu-daemon.sh somehow can lead to many
 	#    dump/restore issues like "can't write lsm profile"
 	systemd-run --unit=checkpoint-test $BIN_DIR/criu-daemon.sh
+}
+
+safe_cd() {
+	cd "$1" || {
+		echo "Failed to cd $1"
+		exit 1
+	}
 }
 
 # --- Logging ---
@@ -129,7 +136,6 @@ do_abort() {
 		set_boot_kernel "$ORIGINAL_KERNEL"
 	fi
 	#remove_last_kernel
-	#rm -rf "$RPM_FAKE_REPO_PATH"
 	log "To perform a full cleanup of all intermediate kernels, please do so manually."
 	exit 1
 }
@@ -137,16 +143,15 @@ do_abort() {
 # --- RPM Mode Specific Functions ---
 generate_git_repo_from_package_list() {
 	log "Generating fake git repository for RPM list..."
-	local repo_path="$RPM_FAKE_REPO_PATH"
-	if [[ -d "$repo_path" ]]; then rm -rf "$repo_path"; fi
-	mkdir -p "$repo_path"
-	cd "$repo_path"
+	rm -rf "$GIT_REPO"
+	mkdir -p "$GIT_REPO"
+	safe_cd "$GIT_REPO"
 	git init -q
-	git config user.name k
-	git config user.email k@l.c
+	git config user.name kab
+	git config user.email kab
 	touch k_url k_rel
 	git add k_url k_rel
-	git commit -m "i" >/dev/null
+	git commit -m "init" >/dev/null
 	while read -r _url; do
 		local _str=$(basename "$_url")
 		_str=${_str#kernel-core-}
@@ -199,11 +204,6 @@ initialize() {
 	BAD_REF="$bad_ref"
 
 	setup_criu
-
-	# Initialize git bisect
-	local repo_dir
-	if [[ "$INSTALL_STRATEGY" == "rpm" ]]; then repo_dir="$RPM_FAKE_REPO_PATH"; else repo_dir="$KERNEL_SRC_DIR"; fi
-	cd "$repo_dir"
 }
 
 verify_intial_commits() {
@@ -231,48 +231,22 @@ run_test() {
 }
 
 get_current_commit() {
-	local repo_dir
-	if [[ "$INSTALL_STRATEGY" == "rpm" ]]; then repo_dir="$RPM_FAKE_REPO_PATH"; else repo_dir="$KERNEL_SRC_DIR"; fi
-	cd "$repo_dir"
+	safe_cd "$GIT_REPO"
 	git rev-parse HEAD
-}
-
-test_commit() {
-	local commit="$1"
-	log "Testing commit: $commit"
-
-	# Let the test handler manage multiple attempts and reboot cycles
-	# It will return 0 for GOOD, non-zero for BAD
-	run_test
 }
 
 commit_good() {
 	local commit="$1"
 	log "Evaluating commit: $commit"
 
-	# Build and install the kernel for this commit
 	run_install_strategy "$commit"
 	run_reboot_strategy
-	sleep 5
-
-	# Test the commit (includes reboot cycle via CRIU daemon)
-	test_commit "$commit"
+	# Let the test handler manage multiple attempts and kernel panic
+	# It will return 0 for GOOD, non-zero for BAD
+	run_test
 }
 
 generate_final_report() {
-	local bad_commit="$1"
-	local final_report
-
-	if [[ "$INSTALL_STRATEGY" == "rpm" ]]; then
-		local repo_dir="$RPM_FAKE_REPO_PATH"
-		cd "$repo_dir"
-		git checkout -q "$bad_commit"
-		final_report="Bad RPM found:\nRelease: $(cat k_rel)\nURL: $(cat k_url)"
-	else
-		final_report="First bad commit found:\nCommit: ${bad_commit}\n$(git log --oneline -1 $bad_commit)"
-	fi
-
-	echo -e "$final_report" >"$WORK_DIR/bisect_final_log.txt"
+	git bisect log >"$WORK_DIR/bisect_final_log.txt"
 	log "Final report saved to $WORK_DIR/bisect_final_log.txt"
-	echo -e "$final_report"
 }
