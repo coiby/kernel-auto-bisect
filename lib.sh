@@ -61,8 +61,32 @@ get_original_kernel() {
 	grubby --info=/boot/vmlinuz-$(uname -r) | grep -E "^kernel=" | sed 's/kernel=//;s/"//g'
 }
 
+FIRST_SIGNALED=true
+_wait_tmt_test() {
+	[[ -z $TMT_SLEEP_MARK ]] && return
+
+	if $FIRST_SIGNALED; then
+		FIRST_SIGNALED=false
+		return
+	fi
+
+	local _wait_time=0
+	MAX_WAIT_TMT_TIME=60
+	until pgrep -f "sleep $TMT_SLEEP_MARK" >/dev/null; do
+		sleep 1
+		((++_wait_time))
+		if [[ $_wait_time -ge $MAX_WAIT_TMT_TIME ]]; then
+			echo "$KAB_TMT_TEST_SLEEP_FLAG still isn't created after ${MAX_WAIT_TMT_TIME}, something wrong. Exiting!"
+			exit 1
+		fi
+	done
+}
+
 signal_checkpoint() {
 	mkdir -p "$SIGNAL_DIR"
+
+	_wait_tmt_test
+
 	log "Signaling daemon to checkpoint and reboot"
 
 	if [[ $1 == reboot ]]; then
