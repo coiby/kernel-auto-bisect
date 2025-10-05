@@ -47,7 +47,7 @@ run_panic_test() {
 
 		# This logic is reached on the first run, or after an inconclusive run.
 		log "Preparing to trigger panic for run #${RUN_COUNT}."
-		if ! type setup_test &>/dev/null; then do_abort "'setup_test' function not found for panic mode."; fi
+		if ! type setup_test &>/dev/null; then log "'setup_test' function not found for panic mode."; fi
 		if ! setup_test; then log "WARNING: setup_test() exited non-zero."; fi
 
 		local count=0
