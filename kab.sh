@@ -74,9 +74,5 @@ main_bisect_loop() {
 	do_abort "Bisection incomplete"
 }
 
-# --- Main Entry Point ---
-# Load configuration and handlers
-load_config_and_handlers
-
 # Start bisection - CRIU daemon handles any necessary restoration automatically
 do_start

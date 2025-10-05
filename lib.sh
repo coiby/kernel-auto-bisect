@@ -175,9 +175,12 @@ END
 }
 
 initialize() {
-	local good_ref="$GOOD_COMMIT"
-	local bad_ref="$BAD_COMMIT"
+	local good_ref bad_ref
 
+	load_config_and_handlers
+
+	good_ref="$GOOD_COMMIT"
+	bad_ref="$BAD_COMMIT"
 	# Store original kernel in memory
 	ORIGINAL_KERNEL=$(get_original_kernel)
 
