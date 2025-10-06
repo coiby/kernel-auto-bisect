@@ -3,6 +3,7 @@
 set -x
 
 TMT_SLEEP_MARK=5.421379
+[[ -z $ARCH ]] && ARCH=$(uname -m)
 
 if [[ $TMT_TEST_RESTART_COUNT == 0 ]]; then
 	cd "$TMT_TREE" || exit 1
@@ -12,8 +13,8 @@ if [[ $TMT_TEST_RESTART_COUNT == 0 ]]; then
 	CONF_FILE=/usr/local/bin/kernel-auto-bisect/bisect.conf
 	TEST_SCRIPT=/usr/local/bin/kernel-auto-bisect/test.sh
 	KERNEL_RPM_LIST=/usr/local/bin/kernel-auto-bisect/kernel_list
-	GOOD_COMMIT=6.16.4-100.fc41.x86_64
-	BAD_COMMIT=6.16.7-100.fc41.x86_64
+	GOOD_COMMIT=6.16.4-100.fc41.${ARCH}
+	BAD_COMMIT=6.16.7-100.fc41.${ARCH}
 
 	cat <<END >"$CONF_FILE"
 INSTALL_STRATEGY="rpm"
@@ -28,10 +29,10 @@ TMT_SLEEP_MARK=$TMT_SLEEP_MARK
 END
 
 	cat <<END >$KERNEL_RPM_LIST
-https://kojipkgs.fedoraproject.org/packages/kernel/6.16.4/100.fc41/x86_64/kernel-core-6.16.4-100.fc41.x86_64.rpm
-https://kojipkgs.fedoraproject.org/packages/kernel/6.16.5/100.fc41/x86_64/kernel-core-6.16.5-100.fc41.x86_64.rpm
-https://kojipkgs.fedoraproject.org/packages/kernel/6.16.6/100.fc41/x86_64/kernel-core-6.16.6-100.fc41.x86_64.rpm
-https://kojipkgs.fedoraproject.org/packages/kernel/6.16.7/100.fc41/x86_64/kernel-core-6.16.7-100.fc41.x86_64.rpm
+https://kojipkgs.fedoraproject.org/packages/kernel/6.16.4/100.fc41/${ARCH}/kernel-core-6.16.4-100.fc41.${ARCH}.rpm
+https://kojipkgs.fedoraproject.org/packages/kernel/6.16.5/100.fc41/${ARCH}/kernel-core-6.16.5-100.fc41.${ARCH}.rpm
+https://kojipkgs.fedoraproject.org/packages/kernel/6.16.6/100.fc41/${ARCH}/kernel-core-6.16.6-100.fc41.${ARCH}.rpm
+https://kojipkgs.fedoraproject.org/packages/kernel/6.16.7/100.fc41/${ARCH}/kernel-core-6.16.7-100.fc41.${ARCH}.rpm
 END
 
 	cat <<END >"$TEST_SCRIPT"
