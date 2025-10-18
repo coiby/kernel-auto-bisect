@@ -17,7 +17,7 @@ LOG_FILE="$WORK_DIR/main.log"
 CRIU_LOG_FILE="$WORK_DIR/criu-daemon.log"
 BISECT_SCRIPT="$BIN_DIR/kab.sh"
 
-LAST_TESTED_KERNEL=""
+TESTED_KERNEL=""
 ORIGINAL_KERNEL=""
 GOOD_REF=""
 BAD_REF=""
@@ -127,14 +127,15 @@ prepare_reboot() {
 	sync
 }
 
-remove_last_kernel() {
-	# This function is now only called during do_abort to clean up the final state.
-	if [[ -z "$LAST_TESTED_KERNEL" ]]; then return; fi
-	local kernel_to_remove="$LAST_TESTED_KERNEL"
+# To avoid blowing up /boot partition, remove the tested kernel
+remove_test_kernel() {
+	if [[ -z "$TESTED_KERNEL" ]]; then return; fi
+
+	local kernel_to_remove="$TESTED_KERNEL"
 	# Safety check: never remove the original kernel
 	if [[ -z "$kernel_to_remove" ]] || [[ "/boot/vmlinuz-$(uname -r)" == "$ORIGINAL_KERNEL" ]]; then
-		log "WARNING: Skipping removal of last kernel, as it is running or undefined."
-		LAST_TESTED_KERNEL=""
+		log "WARNING: Skipping removal of test kernel, as it is the original kernel or undefined."
+		TESTED_KERNEL=""
 		return
 	fi
 	log "Cleaning up last tested kernel: ${kernel_to_remove}"
@@ -145,7 +146,7 @@ remove_last_kernel() {
 		rm -rf /lib/modules/${kernel_to_remove}
 		;;
 	esac
-	LAST_TESTED_KERNEL=""
+	TESTED_KERNEL=""
 }
 
 do_abort() {
@@ -159,7 +160,6 @@ do_abort() {
 		log "Returning to original kernel."
 		set_boot_kernel "$ORIGINAL_KERNEL"
 	fi
-	#remove_last_kernel
 	log "To perform a full cleanup of all intermediate kernels, please do so manually."
 	exit 1
 }
@@ -249,9 +249,12 @@ verify_intial_commits() {
 
 # --- Core Testing Functions ---
 run_test() {
+	local ret
 	# Wrapper for the actual test strategy
 	run_test_strategy
-	return $?
+	ret=$?
+	remove_test_kernel
+	return $ret
 }
 
 get_current_commit() {

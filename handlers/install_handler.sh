@@ -8,7 +8,6 @@ run_install_strategy() {
 	log "--- Phase: INSTALL ---"
 
 	safe_cd "$GIT_REPO"
-	remove_last_kernel
 	local kernel_version_string
 	case "$INSTALL_STRATEGY" in
 	git) install_from_git "$commit_to_install" ;;
@@ -16,7 +15,7 @@ run_install_strategy() {
 	*) do_abort "Unknown INSTALL_STRATEGY: ${INSTALL_STRATEGY}" ;;
 	esac
 
-	kernel_version_string="$LAST_TESTED_KERNEL"
+	kernel_version_string="$TESTED_KERNEL"
 	local new_kernel_path="/boot/vmlinuz-${kernel_version_string}"
 	if [ ! -f "$new_kernel_path" ]; then do_abort "Installed kernel not found at ${new_kernel_path}."; fi
 
@@ -86,7 +85,7 @@ install_from_git() {
 	_kernelrelease_str=$(make -s kernelrelease)
 	_dirty_str=-dirty
 	grep -qe "$_dirty_str$" <<<"$_module_install_output" && ! grep -qe "$_dirty_str$" <<<"$_kernelrelease_str" && _kernelrelease_str+=$_dirty_str
-	LAST_TESTED_KERNEL="$_kernelrelease_str"
+	TESTED_KERNEL="$_kernelrelease_str"
 }
 
 install_from_rpm() {
@@ -126,5 +125,5 @@ install_from_rpm() {
 	done
 
 	if ! dnf install -y "${rpms_to_install[@]}" >"/var/log/install.log" 2>&1; then do_abort "RPM install failed."; fi
-	LAST_TESTED_KERNEL="$release"
+	TESTED_KERNEL="$release"
 }
