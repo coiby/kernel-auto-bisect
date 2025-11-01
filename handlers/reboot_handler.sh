@@ -14,9 +14,22 @@ run_reboot_strategy() {
 	esac
 }
 
+kab_reboot() {
+	run_cmd_and_wait systemctl reboot
+}
+
+signal_checkpoint_reboot() {
+	signal_checkpoint "reboot"
+}
+
 do_full_reboot() {
-	log "Strategy: Performing checkpoint+reboot via daemon..."
-	signal_checkpoint_reboot
+	log "Strategy: Performing full reboot"
+	if [[ -n $KAB_TEST_HOST ]]; then
+		kab_reboot
+	else
+		log "Will use CRIU to restore the program"
+		signal_checkpoint_reboot
+	fi
 }
 
 do_kexec_reboot() {
