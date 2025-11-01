@@ -262,6 +262,42 @@ get_current_commit() {
 	git rev-parse HEAD
 }
 
+# Run a command locally or remotely
+# If $1=-cwd, it will use $2 as working directory
+run_cmd() {
+	local _dir
+	local _cmd
+	local _ssh_opts
+
+	if [[ $1 == "-no-escape" ]]; then
+		no_escape=true
+		shift
+	fi
+
+	if [[ $1 == "-cwd" ]]; then
+		_dir=$2
+		shift 2
+	fi
+
+	if $no_escape; then
+		_cmd="$@"
+	else
+		_cmd=()
+		for _ele in "$@"; do
+			_cmd+=("'$_ele'")
+		done
+	fi
+
+	if [[ -n $KAB_TEST_HOST ]]; then
+		if [[ -n $KAB_TEST_HOST_SSH_KEY ]]; then
+			_ssh_opts=("-i" "$KAB_TEST_HOST_SSH_KEY")
+		fi
+		ssh "${_ssh_opts[@]}" "$KAB_TEST_HOST" "cd '$_dir' && ${_cmd[@]}"
+	else
+		cd "$_dir" && "$@"
+	fi
+}
+
 commit_good() {
 	local commit="$1"
 	log "Evaluating commit: $commit"
