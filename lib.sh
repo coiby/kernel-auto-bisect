@@ -30,10 +30,15 @@ load_config_and_handlers() {
 	fi
 	source "$CONFIG_FILE"
 	for handler in "${HANDLER_DIR}"/*.sh; do if [ -f "$handler" ]; then source "$handler"; fi; done
-	rm -rf $DUMP_DIR/*
-	if ! dnf install git -yq; then
-		exit 1
+	# When INSTALL_STRATEGY=rpm, local fake RPM git repo will be used
+	if [[ $INSTALL_STRATEGY == rpm ]]; then
+		dnf install git -yq
+	else
+		run_cmd dnf install git -yq
 	fi
+
+	[[ -n $KAB_TEST_HOST ]] && return
+	rm -rf $DUMP_DIR/*
 	# 1. setsid somehow doesn't work, checkpointing will fail with "The criu itself is within dumped tree"
 	#    setsid criu-daemon.sh < /dev/null &> log_file &
 	# 2. Using a systemd service to start criu-daemon.sh somehow can lead to many
@@ -54,11 +59,11 @@ log() { echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"; }
 # --- Kernel and Grub Management ---
 set_boot_kernel() {
 	log "Setting default boot kernel to: $1"
-	grubby --set-default "$1"
+	run_cmd grubby --set-default "$1"
 }
 
 get_original_kernel() {
-	grubby --info=/boot/vmlinuz-$(uname -r) | grep -E "^kernel=" | sed 's/kernel=//;s/"//g'
+	run_cmd grubby --info=/boot/vmlinuz-$(uname -r) | grep -E "^kernel=" | sed 's/kernel=//;s/"//g'
 }
 
 FIRST_SIGNALED=true
@@ -113,18 +118,31 @@ signal_checkpoint() {
 
 declare -A release_commit_map
 
-signal_checkpoint_reboot() {
-	signal_checkpoint "reboot"
-}
+run_cmd_and_wait() {
+	local _ssh_opts
 
-signal_checkpoint_panic() {
-	signal_checkpoint "panic"
+	[[ -z $KAB_TEST_HOST ]] && do_abort "$KAB_TEST_HOST not set. Something wrong!"
+
+	WAIT_REMOTE_HOST=300
+	_ssh_opts=(-o ConnectTimeout="$WAIT_REMOTE_HOST")
+
+	if [[ -n $KAB_TEST_HOST_SSH_KEY ]]; then
+		_ssh_opts+=("-i" "$KAB_TEST_HOST_SSH_KEY")
+	fi
+
+	run_cmd sync
+	run_cmd "$@"
+	# Wait before checking remote system is alive again
+	sleep 10
+	if ! ssh "${_ssh_opts[@]}" "$KAB_TEST_HOST" "exit 0"; then
+		do_abort "Can't connect to remote system after ${WAIT_REMOTE_HOST}s"
+	fi
 }
 
 prepare_reboot() {
 	# try to reboot to current EFI bootloader entry next time
-	command -v rstrnt-prepare-reboot &>/dev/null && rstrnt-prepare-reboot >/dev/null
-	sync
+	run_cmd command -v rstrnt-prepare-reboot &>/dev/null && run_cmd rstrnt-prepare-reboot >/dev/null
+	run_cmd sync
 }
 
 # To avoid blowing up /boot partition, remove the tested kernel
@@ -133,17 +151,17 @@ remove_test_kernel() {
 
 	local kernel_to_remove="$TESTED_KERNEL"
 	# Safety check: never remove the original kernel
-	if [[ -z "$kernel_to_remove" ]] || [[ "/boot/vmlinuz-$(uname -r)" == "$ORIGINAL_KERNEL" ]]; then
+	if [[ -z "$kernel_to_remove" ]] || [[ "/boot/vmlinuz-$(run_cmd uname -r)" == "$ORIGINAL_KERNEL" ]]; then
 		log "WARNING: Skipping removal of test kernel, as it is the original kernel or undefined."
 		TESTED_KERNEL=""
 		return
 	fi
 	log "Cleaning up last tested kernel: ${kernel_to_remove}"
 	case "$INSTALL_STRATEGY" in
-	rpm) rpm -e "kernel-core-${kernel_to_remove}" >/dev/null 2>&1 || log "Failed to remove kernel RPMs." ;;
+	rpm) run_cmd rpm -e "kernel-core-${kernel_to_remove}" >/dev/null 2>&1 || log "Failed to remove kernel RPMs." ;;
 	git)
-		kernel-install remove ${kernel_to_remove}
-		rm -rf /lib/modules/${kernel_to_remove}
+		run_cmd kernel-install remove ${kernel_to_remove}
+		run_cmd rm -rf /lib/modules/${kernel_to_remove}
 		;;
 	esac
 	TESTED_KERNEL=""
@@ -152,10 +170,6 @@ remove_test_kernel() {
 do_abort() {
 	log "FATAL: $1"
 	log "Aborting bisection."
-	if [[ "$INSTALL_STRATEGY" == "git" ]] && [ -d "$KERNEL_SRC_DIR" ]; then
-		cd "$KERNEL_SRC_DIR"
-		git bisect reset || true
-	fi
 	if [[ -n "$ORIGINAL_KERNEL" ]]; then
 		log "Returning to original kernel."
 		set_boot_kernel "$ORIGINAL_KERNEL"
@@ -227,6 +241,7 @@ initialize() {
 	GOOD_REF="$good_ref"
 	BAD_REF="$bad_ref"
 
+	[[ -n $KAB_TEST_HOST ]] && return
 	setup_criu
 }
 
@@ -258,8 +273,7 @@ run_test() {
 }
 
 get_current_commit() {
-	safe_cd "$GIT_REPO"
-	git rev-parse HEAD
+	run_cmd -cwd "$GIT_REPO" git rev-parse HEAD
 }
 
 # Run a command locally or remotely
