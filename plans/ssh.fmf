@@ -1,0 +1,9 @@
+discover:
+  - name: kab on two machines
+    how: fmf
+    test:
+     - /tests/kab_ssh
+
+provision:
+   - name: client
+   - name: server
