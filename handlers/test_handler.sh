@@ -41,7 +41,7 @@ cp_file() {
 		_ssh_opts=("-i" "$KAB_TEST_HOST_SSH_KEY")
 	fi
 
-	scp "${_ssh_opts[@]}" "$temp_file" "$KAB_TEST_HOST":"$1"
+	scp "${_ssh_opts[@]}" "$1" "$KAB_TEST_HOST":"$1"
 }
 
 do_panic() {
