@@ -120,7 +120,10 @@ declare -A release_commit_map
 
 # Run a command and wait for the system to be alive again
 run_cmd_and_wait() {
-	local _ssh_opts _wait_time=0
+	local _ssh_opts _wait_time
+
+	WAIT_REMOTE_HOST_DOWN=60
+	WAIT_REMOTE_HOST_UP=300
 
 	[[ -z $KAB_TEST_HOST ]] && do_abort "$KAB_TEST_HOST not set. Something wrong!"
 
@@ -131,19 +134,29 @@ run_cmd_and_wait() {
 		_ssh_opts=("-i" "$KAB_TEST_HOST_SSH_KEY")
 	fi
 
+	_ssh_opts+=(-o ConnectTimeout=3)
+
 	# Wait for remote host to go down
-	while ssh -q "${_ssh_opts[@]}" -o ConnectTimeout=3 "$KAB_TEST_HOST" exit 2>/dev/null; do
-		((++_wait_time))
+	_wait_time=0
+	while ssh -q "${_ssh_opts[@]}" "$KAB_TEST_HOST" exit 2>/dev/null; do
 		printf "."
-		[[ $_wait_time -gt 60 ]] && break
+		if [[ $_wait_time -gt $WAIT_REMOTE_HOST_DOWN ]]; then
+			do_abort "Can still connec to remote host after ${WAIT_REMOTE_HOST_DOWN}s"
+		fi
+		((++_wait_time))
+		sleep 1
 	done
 
-	WAIT_REMOTE_HOST=300
-	_ssh_opts+=(-o ConnectTimeout="$WAIT_REMOTE_HOST")
-
-	if ! ssh "${_ssh_opts[@]}" "$KAB_TEST_HOST" "exit 0"; then
-		do_abort "Can't connect to remote system after ${WAIT_REMOTE_HOST}s"
-	fi
+	# Wait for remote host to be alive again
+	_wait_time=0
+	until ssh -q "${_ssh_opts[@]}" "$KAB_TEST_HOST" exit 2>/dev/null; do
+		printf "."
+		if [[ $_wait_time -gt $WAIT_REMOTE_HOST_UP ]]; then
+			do_abort "Can't connect to remote system after ${WAIT_REMOTE_HOST_UP}s"
+		fi
+		((++_wait_time))
+		sleep 1
+	done
 }
 
 prepare_reboot() {
