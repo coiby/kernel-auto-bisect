@@ -55,7 +55,7 @@ do_panic() {
 	fi
 }
 
-_run_test() {
+_handler_run_test() {
 	if [[ -z $KAB_TEST_HOST ]]; then
 		source "$REPRODUCER_SCRIPT"
 		$1
@@ -71,12 +71,12 @@ END
 	run_cmd bash "$temp_file"
 }
 
-run_test() {
-	_run_test on_test
+handler_run_test() {
+	_handler_run_test on_test
 }
 
-run_test_setup() {
-	_run_test setup_test
+handler_run_test_setup() {
+	_handler_run_test setup_test
 }
 
 run_panic_test() {
@@ -91,8 +91,8 @@ run_panic_test() {
 			log "Verifying outcome of run #${RUN_COUNT}"
 			PANIC_OCCURRED=false
 
-			# run_test/on_test returning 0 means GOOD. Non-zero means BAD.
-			if ! run_test; then
+			# handler_run_test/on_test returning 0 means GOOD. Non-zero means BAD.
+			if ! handler_run_test; then
 				log "Test was bad on run #${RUN_COUNT}. Marking commit as bad."
 				return 1 # BAD
 			fi
@@ -111,7 +111,7 @@ run_panic_test() {
 
 		# This logic is reached on the first run, or after an inconclusive run.
 		log "Preparing to trigger panic for run #${RUN_COUNT}."
-		if ! run_test_setup; then log "WARNING: setup_test() exited non-zero."; fi
+		if ! handler_run_test_setup; then log "WARNING: setup_test() exited non-zero."; fi
 
 		local count=0
 		while :; do
