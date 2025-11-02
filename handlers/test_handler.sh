@@ -13,7 +13,7 @@ _init_test_handler() {
 	if [[ -n $KAB_TEST_HOST ]]; then
 		_dir=$(dirname "$REPRODUCER_SCRIPT")
 		run_cmd mkdir "$_dir"
-		scp "$REPRODUCER_SCRIPT" "$KAB_TEST_HOST":"$REPRODUCER_SCRIPT"
+		cp_file "$REPRODUCER_SCRIPT"
 	fi
 }
 
@@ -34,6 +34,14 @@ run_test_strategy() {
 
 signal_checkpoint_panic() {
 	signal_checkpoint "panic"
+}
+
+cp_file() {
+	if [[ -n $KAB_TEST_HOST_SSH_KEY ]]; then
+		_ssh_opts=("-i" "$KAB_TEST_HOST_SSH_KEY")
+	fi
+
+	scp "${_ssh_opts[@]}" "$temp_file" "$KAB_TEST_HOST":"$1"
 }
 
 do_panic() {
@@ -59,7 +67,7 @@ _run_test() {
 source "$REPRODUCER_SCRIPT"
 $1
 END
-	scp "$temp_file" "$KAB_TEST_HOST":"$temp_file"
+	cp_file "$temp_file"
 	run_cmd bash "$temp_file"
 }
 
