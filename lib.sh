@@ -118,22 +118,29 @@ signal_checkpoint() {
 
 declare -A release_commit_map
 
+# Run a command and wait for the system to be alive again
 run_cmd_and_wait() {
-	local _ssh_opts
+	local _ssh_opts _wait_time=0
 
 	[[ -z $KAB_TEST_HOST ]] && do_abort "$KAB_TEST_HOST not set. Something wrong!"
 
-	WAIT_REMOTE_HOST=300
-	_ssh_opts=(-o ConnectTimeout="$WAIT_REMOTE_HOST")
-
-	if [[ -n $KAB_TEST_HOST_SSH_KEY ]]; then
-		_ssh_opts+=("-i" "$KAB_TEST_HOST_SSH_KEY")
-	fi
-
 	run_cmd sync
 	run_cmd "$@"
-	# Wait before checking remote system is alive again
-	sleep 10
+
+	if [[ -n $KAB_TEST_HOST_SSH_KEY ]]; then
+		_ssh_opts=("-i" "$KAB_TEST_HOST_SSH_KEY")
+	fi
+
+	# Wait for remote host to go down
+	while ssh -q "${_ssh_opts[@]}" -o ConnectTimeout=3 "$KAB_TEST_HOST" exit 2>/dev/null; do
+		((++_wait_time))
+		printf "."
+		[[ $_wait_time -gt 60 ]] && break
+	done
+
+	WAIT_REMOTE_HOST=300
+	_ssh_opts+=(-o ConnectTimeout="$WAIT_REMOTE_HOST")
+
 	if ! ssh "${_ssh_opts[@]}" "$KAB_TEST_HOST" "exit 0"; then
 		do_abort "Can't connect to remote system after ${WAIT_REMOTE_HOST}s"
 	fi
