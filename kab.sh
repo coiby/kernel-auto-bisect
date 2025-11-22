@@ -6,13 +6,6 @@
 #
 source /usr/local/bin/kernel-auto-bisect/lib.sh
 
-safe_cd() {
-	cd "$1" || {
-		echo "Failed to cd $1"
-		exit 1
-	}
-}
-
 do_start() {
 	initialize
 	verify_intial_commits
@@ -23,8 +16,7 @@ do_start() {
 }
 
 should_continue_bisect() {
-	safe_cd "$GIT_REPO"
-	! git bisect log | grep -q "first bad commit"
+	! run_cmd -cwd "$GIT_REPO" git bisect log "|" grep -q "first bad commit"
 }
 
 main_bisect_loop() {
