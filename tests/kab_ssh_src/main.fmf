@@ -1,0 +1,5 @@
+summary: Run kernel-auto-bisect and find out the 1st bad commit
+test: ./test.sh
+framework: shell
+require: [make, git]
+duration: 20m

@@ -3,9 +3,48 @@
 # install_handler.sh: Contains strategies for installing kernels.
 #
 
+# install packages needed for kernel development
+install_kernel_devel() {
+	run_cmd dnf --setopt=install_weak_deps=False install audit-libs-devel binutils-devel clang dwarves llvm perl python3-devel elfutils-devel java-devel ncurses-devel newt-devel numactl-devel pciutils-devel perl-generators xz-devel xmlto bison openssl-devel bc openssl cpio xz tar zstd -qy
+}
+
+generate_mininal_config() {
+	ORIGINAL_KERNEL_CONFIG=${ORIGINAL_KERNEL/vmlinuz/config}
+	# only build kernel modules that are in-use or included in initramfs
+	lsinitrd "/boot/initramfs-$(uname -r).img" | sed -n -E "s/.*\/([a-zA-Z0-9_-]+).ko.xz/\1/p" | xargs -n 1 modprobe
+
+	run_cmd -cwd "$GIT_REPO" yes '' '|' make localmodconfig
+	run_cmd sed -i "/rhel.pem/d" .config
+	run_cmd sed -i "/kernel.sbat/d" .config
+
+	# To avoid builidng bloated kernel image and modules, disable DEBUG_INFO_BTF to auto-disable CONFIG_DEBUG_INFO
+	run_cmd_in_GIT_REPO ./scripts/config -d DEBUG_INFO_BTF
+	run_cmd_in_GIT_REPO ./scripts/config -d DEBUG_INFO_BTF_MODULES
+	run_cmd_in_GIT_REPO ./scripts/config -d DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT
+
+	if [[ $TEST_STRATEGY == panic ]]; then
+		# - Enable squashfs related modules so the default crashkernel value
+		#   will work.
+		# - Enable NFS module for nfs dumping
+		run_cmd_in_GIT_REPO grep -e BLK_DEV_LOOP -e NFS -e SQUASHFS -e OVERLAY -e EROFS_FS "$ORIGINAL_KERNEL_CONFIG" ">>.config"
+
+	fi
+}
+
+_init_install_handler() {
+	[[ $INSTALL_STRATEGY != git ]] && return
+	install_kernel_devel
+	generate_mininal_config
+}
+
 run_install_strategy() {
 	local commit_to_install=$1
 	log "--- Phase: INSTALL ---"
+
+	if [[ $_install_handler_initilized != true ]]; then
+		_init_install_handler
+		_install_handler_initilized=true
+	fi
 
 	local kernel_version_string
 	case "$INSTALL_STRATEGY" in
@@ -21,69 +60,63 @@ run_install_strategy() {
 	set_boot_kernel "$new_kernel_path"
 }
 
+no_openssl_engine() {
+	run_cmd_in_GIT_REPO grep -qs OPENSSL_NO_ENGINE scripts/sign-file.c
+}
+
 _openssl_engine_workaround() {
-	for _branch in master main; do
-		if git rev-parse --verify master &>/dev/null; then
-			MAIN_BRANCH=$_branch
-			break
-		fi
-	done
+	no_openssl_engine && retun 0
+	if ! CURRENT_BRANCH=$(run_cmd_in_GIT_REPO git branch --show-current); then
+		do_abort "Can't get current branch"
+	fi
 
-	[[ -z $MAIN_BRANCH ]] && do_abort "No master or main branch exist"
-
-	git show $MAIN_BRANCH:scripts/sign-file.c >scripts/sign-file.c
-	git show $MAIN_BRANCH:certs/extract-cert.c >certs/extract-cert.c
-	git show $MAIN_BRANCH:scripts/ssl-common.h >scripts/ssl-common.h
-	cp scripts/ssl-common.h certs/
+	run_cmd_in_GIT_REPO git show $CURRENT_BRANCH:scripts/sign-file.c ">scripts/sign-file.c"
+	run_cmd_in_GIT_REPO git show $CURRENT_BRANCH:certs/extract-cert.c ">certs/extract-cert.c"
+	run_cmd_in_GIT_REPO git show $CURRENT_BRANCH:scripts/ssl-common.h ">scripts/ssl-common.h"
+	run_cmd_in_GIT_REPO cp scripts/ssl-common.h certs/
 }
 
 _undo_openssl_engine_workaround() {
-	git checkout -- scripts/sign-file.c
-	git checkout -- certs/extract-cert.c
-	if ! git checkout -- scripts/ssl-common.h &>/dev/null; then
-		rm -f scripts/ssl-common.h
+	no_openssl_engine && retun 0
+
+	run_cmd_in_GIT_REPO git checkout -- scripts/sign-file.c
+	run_cmd_in_GIT_REPO git checkout -- certs/extract-cert.c
+	if ! run_cmd_in_GIT_REPO git checkout -- scripts/ssl-common.h "&>/dev/null"; then
+		run_cmd_in_GIT_REPO rm -f scripts/ssl-common.h
 	fi
-	rm -f certs/ssl-common.h
+	run_cmd_in_GIT_REPO rm -f certs/ssl-common.h
+}
+
+run_cmd_in_GIT_REPO() {
+	run_cmd -cwd "$GIT_REPO" "$@"
 }
 
 install_from_git() {
 	local commit_to_install=$1
 	log "Strategy: install_from_git for commit ${commit_to_install}"
 
-	yes '' | make localmodconfig
-	sed -i "/rhel.pem/d" .config
-
-	# To avoid builidng bloated kernel image and modules, disable DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT to auto-disable CONFIG_DEBUG_INFO
-	./scripts/config -d DEBUG_INFO_BTF
-	./scripts/config -d DEBUG_INFO_BTF_MODULES
-	./scripts/config -d DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT
-
-	ORIGINAL_KERNEL_CONFIG=${ORIGINAL_KERNEL/vmlinuz/config}
-
-	# Enable loop, quashfs, overlay and erofs
-	grep -e BLK_DEV_LOOP -e SQUASHFS -e OVERLAY -e EROFS_FS "$ORIGINAL_KERNEL_CONFIG" >>.config
-
-	if grep -qs "^nfs" /etc/kdump.conf; then
-		/usr/bin/grep NFS $ORIGINAL_KERNEL_CONFIG >>.config
-	fi
-
-	_commit_short_id=$(git rev-parse --short "$commit_to_install")
+	_commit_short_id=$(run_cmd_in_GIT_REPO git rev-parse --short "$commit_to_install")
 	_openssl_engine_workaround
-	./scripts/config --set-str CONFIG_LOCALVERSION "-${_commit_short_id}"
-	if ! yes $'\n' | make KCFLAGS="-Wno-error=calloc-transposed-args" -j"${MAKE_JOBS}" >"/var/log/build.log" 2>&1; then do_abort "Build failed."; fi
-	if ! _module_install_output=$(make modules_install -j); then
+	run_cmd_in_GIT_REPO ./scripts/config --set-str CONFIG_LOCALVERSION "-${_commit_short_id}"
+	_build_log=/var/log/build_${_commit_short_id}.log
+	# To prevent OOM on small-RAM systems, by default use the number of CPU
+	# cores as number of jobs
+	[[ -z $MAKE_JOBS ]] && MAKE_JOBS=$(run_cmd nproc)
+	if ! run_cmd_in_GIT_REPO yes "" '|' make KCFLAGS="-Wno-error=calloc-transposed-args" -j"${MAKE_JOBS}" ">${_build_log}" '2>&1'; then do_abort "Build failed."; fi
+
+	if ! run_cmd_in_GIT_REPO make modules_install -j ">${_build_log}" '2>&1'; then
 		_undo_openssl_engine_workaround
-		do_abort "Install failed."
+		do_abort "Failed to install kernel modules"
 	fi
-	echo "$_module_install_output" >>"/var/log/build.log"
-	if ! make install >>"/var/log/build.log" 2>&1; then
+
+	if ! run_cmd_in_GIT_REPO make install ">>${_build_log}" "2>&1"; then
 		_undo_openssl_engine_workaround
-		do_abort "Install failed."
+		do_abort "Failed to install kernel."
 	fi
 	_undo_openssl_engine_workaround
-	_kernelrelease_str=$(make -s kernelrelease)
+	_kernelrelease_str=$(run_cmd_in_GIT_REPO make -s kernelrelease)
 	_dirty_str=-dirty
-	grep -qe "$_dirty_str$" <<<"$_module_install_output" && ! grep -qe "$_dirty_str$" <<<"$_kernelrelease_str" && _kernelrelease_str+=$_dirty_str
+	run_cmd grep -qe "$_dirty_str$" "${_build_log}" && ! grep -qe "$_dirty_str$" <<<"$_kernelrelease_str" && _kernelrelease_str+=$_dirty_str
 	TESTED_KERNEL="$_kernelrelease_str"
 }
 

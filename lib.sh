@@ -63,7 +63,7 @@ set_boot_kernel() {
 }
 
 get_original_kernel() {
-	run_cmd grubby --info=/boot/vmlinuz-$(uname -r) | grep -E "^kernel=" | sed 's/kernel=//;s/"//g'
+	run_cmd grubby --info=/boot/vmlinuz-$(run_cmd uname -r) | grep -E "^kernel=" | sed 's/kernel=//;s/"//g'
 }
 
 FIRST_SIGNALED=true
@@ -257,6 +257,15 @@ initialize() {
 		good_ref=${release_commit_map[$GOOD_COMMIT]}
 		bad_ref=${release_commit_map[$BAD_COMMIT]}
 		if [ -z "$good_ref" ] || [ -z "$bad_ref" ]; then do_abort "Could not find GOOD/BAD versions in RPM list."; fi
+	elif [[ "$INSTALL_STRATEGY" == "git" ]]; then
+		if run_cmd test -d $GIT_REPO/.git; then
+			log "$GIT_REPO already exists, reuse it"
+		else
+			[[ -n $GIT_REPO_BRANCH ]] && branch_arg=--branch=$GIT_REPO_BRANCH
+			if ! run_cmd git clone "$GIT_REPO_URL" "$branch_arg" $GIT_REPO; then
+				do_abort "Failed to clone $GIT_REPO_URL"
+			fi
+		fi
 	fi
 
 	# Save resolved references in memory
