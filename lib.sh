@@ -300,8 +300,11 @@ get_current_commit() {
 # If $1=-cwd, it will use $2 as working directory
 run_cmd() {
 	local _dir
-	local _cmd
+	local -a _cmd
 	local _ssh_opts
+	local no_escape
+
+	no_escape=true
 
 	if [[ $1 == "-no-escape" ]]; then
 		no_escape=true
@@ -310,13 +313,13 @@ run_cmd() {
 
 	if [[ $1 == "-cwd" ]]; then
 		_dir=$2
+		_cmd=(cd "'$_dir'" "&&")
 		shift 2
 	fi
 
 	if $no_escape; then
-		_cmd="$@"
+		_cmd+=("$@")
 	else
-		_cmd=()
 		for _ele in "$@"; do
 			_cmd+=("'$_ele'")
 		done
@@ -326,9 +329,9 @@ run_cmd() {
 		if [[ -n $KAB_TEST_HOST_SSH_KEY ]]; then
 			_ssh_opts=("-i" "$KAB_TEST_HOST_SSH_KEY")
 		fi
-		ssh "${_ssh_opts[@]}" "$KAB_TEST_HOST" "cd '$_dir' && ${_cmd[@]}"
+		ssh "${_ssh_opts[@]}" "$KAB_TEST_HOST" "${_cmd[@]}"
 	else
-		cd "$_dir" && "$@"
+		eval "${_cmd[@]}"
 	fi
 }
 
