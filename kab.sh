@@ -14,14 +14,8 @@ safe_cd() {
 }
 
 do_start() {
-	touch "$LOG_FILE"
-
-	log "--- Bisection START ---"
-
 	initialize
-
 	verify_intial_commits
-
 	log "Starting git bisect process"
 	git bisect start "$BAD_REF" "$GOOD_REF"
 

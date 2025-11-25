@@ -244,6 +244,8 @@ initialize() {
 
 	load_config_and_handlers
 
+	mkdir -p "$WORK_DIR"
+
 	good_ref="$GOOD_COMMIT"
 	bad_ref="$BAD_COMMIT"
 	# Store original kernel in memory
