@@ -328,8 +328,9 @@ run_cmd() {
 	fi
 
 	if [[ -n $KAB_TEST_HOST ]]; then
-		if [[ -n $KAB_TEST_HOST_SSH_KEY ]]; then
-			_ssh_opts=("-i" "$KAB_TEST_HOST_SSH_KEY")
+		_ssh_opts=(-o BatchMode=yes)
+		if [[ -f $KAB_TEST_HOST_SSH_KEY ]]; then
+			_ssh_opts+=("-i" "$KAB_TEST_HOST_SSH_KEY")
 		fi
 		ssh "${_ssh_opts[@]}" "$KAB_TEST_HOST" "${_cmd[@]}"
 	else
