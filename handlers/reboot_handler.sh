@@ -15,7 +15,7 @@ run_reboot_strategy() {
 }
 
 kab_reboot() {
-	run_cmd_and_wait systemctl reboot
+	reboot_and_wait systemctl reboot
 }
 
 signal_checkpoint_reboot() {
