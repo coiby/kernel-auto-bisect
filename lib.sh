@@ -118,27 +118,32 @@ signal_checkpoint() {
 
 declare -A release_commit_map
 
-# Run a command and wait for the system to be alive again
-run_cmd_and_wait() {
+# Run a command to reboot/panic the system and wait for the system to be alive
+# again
+reboot_and_wait() {
 	local _ssh_opts _wait_time
 
 	WAIT_REMOTE_HOST_DOWN=60
 	WAIT_REMOTE_HOST_UP=300
 
 	[[ -z $KAB_TEST_HOST ]] && do_abort "$KAB_TEST_HOST not set. Something wrong!"
+	_ssh_opts=(-q)
 
-	run_cmd sync
-	run_cmd "$@"
-
-	if [[ -n $KAB_TEST_HOST_SSH_KEY ]]; then
-		_ssh_opts=("-i" "$KAB_TEST_HOST_SSH_KEY")
+	if [[ -f $KAB_TEST_HOST_SSH_KEY ]]; then
+		_ssh_opts+=("-i" "$KAB_TEST_HOST_SSH_KEY")
 	fi
+
+	# Avoid hanging forever after triggering kernel panic
+	_ssh_opts+=(-o ChannelTimeout=session=2s)
+
+	ssh "${_ssh_opts[@]}" "$KAB_TEST_HOST" sync
+	ssh "${_ssh_opts[@]}" "$KAB_TEST_HOST" "$@"
 
 	_ssh_opts+=(-o ConnectTimeout=3)
 
 	# Wait for remote host to go down
 	_wait_time=0
-	while ssh -q "${_ssh_opts[@]}" "$KAB_TEST_HOST" exit 2>/dev/null; do
+	while ssh "${_ssh_opts[@]}" "$KAB_TEST_HOST" exit 2>/dev/null; do
 		printf "."
 		if [[ $_wait_time -gt $WAIT_REMOTE_HOST_DOWN ]]; then
 			do_abort "Can still connec to remote host after ${WAIT_REMOTE_HOST_DOWN}s"
@@ -149,7 +154,7 @@ run_cmd_and_wait() {
 
 	# Wait for remote host to be alive again
 	_wait_time=0
-	until ssh -q "${_ssh_opts[@]}" "$KAB_TEST_HOST" exit 2>/dev/null; do
+	until ssh "${_ssh_opts[@]}" "$KAB_TEST_HOST" exit 2>/dev/null; do
 		printf "."
 		if [[ $_wait_time -gt $WAIT_REMOTE_HOST_UP ]]; then
 			do_abort "Can't connect to remote system after ${WAIT_REMOTE_HOST_UP}s"
@@ -337,6 +342,7 @@ run_cmd() {
 	fi
 
 	if [[ -n $KAB_TEST_HOST ]]; then
+		# - BatchMode: avoiding waiting forever for user password
 		_ssh_opts=(-o BatchMode=yes)
 		if [[ -f $KAB_TEST_HOST_SSH_KEY ]]; then
 			_ssh_opts+=("-i" "$KAB_TEST_HOST_SSH_KEY")

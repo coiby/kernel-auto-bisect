@@ -49,7 +49,7 @@ do_panic() {
 	prepare_reboot
 
 	if [[ -n $KAB_TEST_HOST ]]; then
-		run_cmd -no-escape "sync && echo 1 > /proc/sys/kernel/sysrq && echo c > /proc/sysrq-trigger"
+		reboot_and_wait "echo 1 > /proc/sys/kernel/sysrq && echo c > /proc/sysrq-trigger"
 	else
 		signal_checkpoint_panic
 	fi
