@@ -353,6 +353,10 @@ run_cmd() {
 	fi
 }
 
+run_cmd_in_GIT_REPO() {
+	run_cmd -cwd "$GIT_REPO" "$@"
+}
+
 commit_good() {
 	local commit="$1"
 	log "Evaluating commit: $commit"
