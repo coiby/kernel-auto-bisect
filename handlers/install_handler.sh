@@ -87,10 +87,6 @@ _undo_openssl_engine_workaround() {
 	run_cmd_in_GIT_REPO rm -f certs/ssl-common.h
 }
 
-run_cmd_in_GIT_REPO() {
-	run_cmd -cwd "$GIT_REPO" "$@"
-}
-
 install_from_git() {
 	local commit_to_install=$1
 	log "Strategy: install_from_git for commit ${commit_to_install}"
