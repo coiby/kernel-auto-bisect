@@ -65,7 +65,7 @@ no_openssl_engine() {
 }
 
 _openssl_engine_workaround() {
-	no_openssl_engine && retun 0
+	no_openssl_engine && return 0
 	if ! CURRENT_BRANCH=$(run_cmd_in_GIT_REPO git branch --show-current); then
 		do_abort "Can't get current branch"
 	fi
@@ -77,7 +77,7 @@ _openssl_engine_workaround() {
 }
 
 _undo_openssl_engine_workaround() {
-	no_openssl_engine && retun 0
+	no_openssl_engine && return 0
 
 	run_cmd_in_GIT_REPO git checkout -- scripts/sign-file.c
 	run_cmd_in_GIT_REPO git checkout -- certs/extract-cert.c
