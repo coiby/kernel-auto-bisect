@@ -10,13 +10,13 @@ do_start() {
 	initialize
 	verify_intial_commits
 	log "Starting git bisect process"
-	git bisect start "$BAD_REF" "$GOOD_REF"
+	run_cmd_in_GIT_REPO git bisect start "$BAD_REF" "$GOOD_REF"
 
 	main_bisect_loop
 }
 
 should_continue_bisect() {
-	! run_cmd -cwd "$GIT_REPO" git bisect log "|" grep -q "first bad commit"
+	! run_cmd_in_GIT_REPO git bisect log "|" grep -q "first bad commit"
 }
 
 main_bisect_loop() {
