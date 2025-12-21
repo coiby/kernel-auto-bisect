@@ -320,7 +320,7 @@ run_cmd() {
 	local _ssh_opts
 	local no_escape
 
-	no_escape=true
+	no_escape=false
 
 	if [[ $1 == "-no-escape" ]]; then
 		no_escape=true
@@ -337,7 +337,11 @@ run_cmd() {
 		_cmd+=("$@")
 	else
 		for _ele in "$@"; do
-			_cmd+=("'$_ele'")
+			if [[ "$_ele" =~ [[:space:]] ]]; then
+				_cmd+=("'$_ele'")
+			else
+				_cmd+=("$_ele")
+			fi
 		done
 	fi
 
