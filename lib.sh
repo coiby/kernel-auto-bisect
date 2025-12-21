@@ -312,7 +312,13 @@ get_current_commit() {
 	run_cmd -cwd "$GIT_REPO" git rev-parse HEAD
 }
 
-# Run a command locally or remotely
+# Run a command locally or remotely over ssh (optionally) in specified
+# directory
+#
+# run_cmd [-no-escape] [-cwd work_dir] command
+#
+# If $1=-no-escape, it won't try to escape spaces
+#
 # If $1=-cwd, it will use $2 as working directory
 run_cmd() {
 	local _dir
