@@ -26,10 +26,14 @@ main_bisect_loop() {
 
 		if commit_good "$commit"; then
 			log "Marking $commit as GOOD"
-			git bisect good "$commit"
+			if ! run_cmd_in_GIT_REPO git bisect good "$commit"; then
+				do_abort "Failed to run 'git bisect good "$commit"'"
+			fi
 		else
 			log "Marking $commit as BAD"
-			git bisect bad "$commit"
+			if ! run_cmd_in_GIT_REPO git bisect bad "$commit"; then
+				do_abort "Failed to run 'git bisect bad "$commit"'"
+			fi
 		fi
 	done
 	generate_final_report
