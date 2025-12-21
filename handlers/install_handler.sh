@@ -47,6 +47,10 @@ run_install_strategy() {
 	fi
 
 	local kernel_version_string
+
+	# No need for bisect but needed for verifying initial good/bad commit
+	run_cmd_in_GIT_REPO git checkout -q "$commit_to_install"
+
 	case "$INSTALL_STRATEGY" in
 	git) install_from_git "$commit_to_install" ;;
 	rpm) install_from_rpm "$commit_to_install" ;;
@@ -91,6 +95,9 @@ install_from_git() {
 	local commit_to_install=$1
 	log "Strategy: install_from_git for commit ${commit_to_install}"
 
+	# No need for bisect but needed for verifying initial good/bad commit
+	run_cmd_in_GIT_REPO git checkout -q "$commit_to_install"
+
 	_commit_short_id=$(run_cmd_in_GIT_REPO git rev-parse --short "$commit_to_install")
 	_openssl_engine_workaround
 	run_cmd_in_GIT_REPO ./scripts/config --set-str CONFIG_LOCALVERSION "-${_commit_short_id}"
@@ -120,17 +127,13 @@ install_from_rpm() {
 	local commit_to_install=$1
 	log "Strategy: install_from_rpm for commit ${commit_to_install}"
 
-	safe_cd "$GIT_REPO"
-	# No need for bisect but needed for verifying initial good/bad commit
-	git checkout -q "$commit_to_install"
-
 	if ! command -v wget; then
 		run_cmd dnf install wget -yq
 	fi
 
-	local core_url=$(cat k_url)
-	local base_url=$(dirname "$core_url")
-	local release=$(cat k_rel)
+	local core_url=$(run_cmd_in_GIT_REPO cat k_url)
+	local base_url=$(run_cmd_in_GIT_REPO dirname "$core_url")
+	local release=$(run_cmd_in_GIT_REPO cat k_rel)
 	local arch=$(echo "$core_url" | rev | cut -d. -f2 | rev)
 	local rpm_cache_dir="$RPM_CACHE_DIR"
 	mkdir -p "$rpm_cache_dir"
@@ -143,7 +146,7 @@ install_from_rpm() {
 		if [ ! -f "$rpm_path" ]; then
 			log "Downloading ${rpm_filename}..."
 			if ! run_cmd wget --no-check-certificate -q -O "$rpm_path" "$rpm_url"; then
-				rm -f "$rpm_path"
+				run_cmd rm -f "$rpm_path"
 				log "Download failed. Ignore the error"
 			else
 				rpms_to_install+=("$rpm_path")

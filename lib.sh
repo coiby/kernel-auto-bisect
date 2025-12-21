@@ -30,12 +30,7 @@ load_config_and_handlers() {
 	fi
 	source "$CONFIG_FILE"
 	for handler in "${HANDLER_DIR}"/*.sh; do if [ -f "$handler" ]; then source "$handler"; fi; done
-	# When INSTALL_STRATEGY=rpm, local fake RPM git repo will be used
-	if [[ $INSTALL_STRATEGY == rpm ]]; then
-		dnf install git -yq
-	else
-		run_cmd dnf install git -yq
-	fi
+	run_cmd dnf install git -yq
 
 	[[ -n $KAB_TEST_HOST ]] && return
 	rm -rf $DUMP_DIR/*
@@ -206,23 +201,22 @@ do_abort() {
 # --- RPM Mode Specific Functions ---
 generate_git_repo_from_package_list() {
 	log "Generating fake git repository for RPM list..."
-	rm -rf "$GIT_REPO"
-	mkdir -p "$GIT_REPO"
-	safe_cd "$GIT_REPO"
-	git init -q
-	git config user.name kab
-	git config user.email kab
-	touch k_url k_rel
-	git add k_url k_rel
-	git commit -m "init" >/dev/null
+	run_cmd rm -rf "$GIT_REPO"
+	run_cmd mkdir -p "$GIT_REPO"
+	run_cmd_in_GIT_REPO git init -q
+	run_cmd_in_GIT_REPO git config user.name kab
+	run_cmd_in_GIT_REPO git config user.email kab
+	run_cmd_in_GIT_REPO touch k_url k_rel
+	run_cmd_in_GIT_REPO git add k_url k_rel
+	run_cmd_in_GIT_REPO git commit -m "init" >/dev/null
 	while read -r _url; do
 		local _str=$(basename "$_url")
 		_str=${_str#kernel-core-}
 		local k_rel=${_str%.rpm}
-		echo "$_url" >k_url
-		echo "$k_rel" >k_rel
-		git commit -m "$k_rel" k_url k_rel >/dev/null
-		release_commit_map[$k_rel]=$(git rev-parse HEAD)
+		run_cmd_in_GIT_REPO echo "$_url" >k_url
+		run_cmd_in_GIT_REPO echo "$k_rel" >k_rel
+		run_cmd_in_GIT_REPO git commit -m "$k_rel" k_url k_rel >/dev/null
+		release_commit_map[$k_rel]=$(run_cmd_in_GIT_REPO git rev-parse HEAD)
 	done <"$KERNEL_RPM_LIST"
 }
 
@@ -392,6 +386,6 @@ commit_good() {
 }
 
 generate_final_report() {
-	git bisect log >"$WORK_DIR/bisect_final_log.txt"
+	run_cmd_in_GIT_REPO git bisect log >"$WORK_DIR/bisect_final_log.txt"
 	log "Final report saved to $WORK_DIR/bisect_final_log.txt"
 }
