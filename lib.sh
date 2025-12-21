@@ -353,6 +353,19 @@ run_cmd() {
 		fi
 		ssh "${_ssh_opts[@]}" "$KAB_TEST_HOST" "${_cmd[@]}"
 	else
+		# For simply running command locally, "$@" will a better choice than
+		# eval. But to simplify testing for running commands on remote host, we
+		# use eval.
+		# Besides we quote $_dir and arguments with space. As a
+		# result, "$@" won't work.
+		#
+		# Note we assume ssh behaves the same way as eval regarding escaping
+		# and quotes, for example,
+		#   eval cd 'ab cd'
+		#   ssh HOST cd 'ab cd'
+		#
+		#   eval cd "$GIT_REPO" '&&' git bisect log "|" grep -q "first bad commit"
+		#   ssh HOST "$GIT_REPO" '&&' git bisect log "|" grep -q "first bad commit"
 		eval "${_cmd[@]}"
 	fi
 }
