@@ -3,6 +3,9 @@
 Describe 'kdump-lib'
 	Include ./lib.sh
 
+	# Assuming ssh will behave the same way as eval regarding escaping and
+	# quotes, so we only to test running commands locally.
+
 	Describe "run_cmd"
 		out=hello
 		It "should handle cwd with a empty space corrently"
