@@ -35,5 +35,23 @@ Describe 'kdump-lib'
 			The output should equal "$_str_with_space"
 			The status should be success
 		End
+
+		# "yes '' | make localmodconfig" shouldn't be executed as
+		# "yes | make localmodconfig".
+		#
+		# Otherwise the process will get stuck by repeatedly printing lines as
+		# similar to
+		# Length to try to ... (CMDLINE_LOG_WRAP_IDEAL_LEN) [1021] (NEW) y
+		It "should handle a command with an empty string as argument corretly"
+			three_newlines() {
+				%text
+				#|
+				#|
+				#|
+			}
+			When call run_cmd yes '' "|" head -3
+			The output should equal "$(three_newlines)"
+			The status should be success
+		End
 	End
 End
