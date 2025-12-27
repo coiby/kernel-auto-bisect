@@ -337,7 +337,7 @@ run_cmd() {
 		_cmd+=("$@")
 	else
 		for _ele in "$@"; do
-			if [[ "$_ele" =~ [[:space:]] ]]; then
+			if [[ "$_ele" =~ [[:space:]] || $_ele == "" ]]; then
 				_cmd+=("'$_ele'")
 			else
 				_cmd+=("$_ele")
