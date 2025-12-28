@@ -13,9 +13,9 @@ generate_mininal_config() {
 	# only build kernel modules that are in-use or included in initramfs
 	lsinitrd "/boot/initramfs-$(uname -r).img" | sed -n -E "s/.*\/([a-zA-Z0-9_-]+).ko.xz/\1/p" | xargs -n 1 modprobe
 
-	run_cmd -cwd "$GIT_REPO" yes '' '|' make localmodconfig
-	run_cmd sed -i "/rhel.pem/d" .config
-	run_cmd sed -i "/kernel.sbat/d" .config
+	run_cmd_in_GIT_REPO yes '' '|' make localmodconfig
+	run_cmd_in_GIT_REPO sed -i "/rhel.pem/d" .config
+	run_cmd_in_GIT_REPO sed -i "/kernel.sbat/d" .config
 
 	# To avoid builidng bloated kernel image and modules, disable DEBUG_INFO_BTF to auto-disable CONFIG_DEBUG_INFO
 	run_cmd_in_GIT_REPO ./scripts/config -d DEBUG_INFO_BTF
