@@ -2,6 +2,7 @@
 # vim: dict+=/usr/share/beakerlib/dictionary.vim cpt=.,w,b,u,t,i,k
 set -x
 
+# shellcheck disable=SC1091
 . ./tmt.sh
 
 [[ -z $ARCH ]] && ARCH=$(uname -m)
@@ -58,8 +59,6 @@ END
 
 	bash -x $KAB_SCRIPT </dev/null &>/root/test.log
 	GIT_REPO=/var/local/kernel-auto-bisect/git_repo
-	MAX_WAIT_TIME=600
-	wait_time=0
 	cd "$GIT_REPO" || exit 1
 
 	if git bisect log | grep -q "first bad commit"; then

@@ -39,15 +39,16 @@ setup_test() {
 on_test() {
     echo "REPRODUCER: Running on_test for verification..."
 
-    # Example: Check if a vmcore was created.
-    # This is a robust way to check for a new vmcore.
-    # It looks for a crash directory newer than the state directory,
-    # which is touched right before the panic.
-    local crash_dir=$(grep '^path ' /etc/kdump.conf | awk '{print $2}')
+    # Example: Check if a vmcore was created. This is a robust way to check for
+    # a new vmcore. It looks for a crash directory newer than the state
+    # directory, which is touched right before the panic.
+    local crash_dir
+    crash_dir=$(grep '^path ' /etc/kdump.conf | awk '{print $2}')
     [ -z "$crash_dir" ] && crash_dir="/var/crash"
     local state_dir_for_timestamp="/var/local/kdump-bisect"
 
-    local latest_dump=$(find "$crash_dir" -mindepth 1 -maxdepth 1 -type d -newer "$state_dir_for_timestamp" -print -quit)
+    local latest_dump
+    latest_dump=$(find "$crash_dir" -mindepth 1 -maxdepth 1 -type d -newer "$state_dir_for_timestamp" -print -quit)
 
     if [ -n "$latest_dump" ] && [ -f "${latest_dump}/vmcore" ]; then
         echo "REPRODUCER: SUCCESS. New vmcore found at ${latest_dump}."
