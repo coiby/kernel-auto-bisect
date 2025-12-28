@@ -1,0 +1,5 @@
+discover:
+  - name: kab on a single machine (CRIU)
+    how: fmf
+    test:
+     - /tests/kab_criu
