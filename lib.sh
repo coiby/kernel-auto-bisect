@@ -5,16 +5,18 @@ WORK_DIR="/var/local/kernel-auto-bisect"
 GIT_REPO="$WORK_DIR/git_repo"
 SIGNAL_DIR="$WORK_DIR/signal"
 DUMP_DIR="$WORK_DIR/dump"
+# shellcheck disable=SC2034
 DUMP_LOG_DIR="$WORK_DIR/dump_logs"
 CHECKPOINT_SIGNAL="$SIGNAL_DIR/checkpoint_request"
 RESTORE_FLAG="$SIGNAL_DIR/restore_flag"
-PANIC_SIGNAL="$SIGNAL_DIR/panic_request"
 
 CONFIG_FILE="$BIN_DIR/bisect.conf"
 HANDLER_DIR="$BIN_DIR/handlers"
 LOG_FILE="$WORK_DIR/main.log"
 
+# shellcheck disable=SC2034
 CRIU_LOG_FILE="$WORK_DIR/criu-daemon.log"
+# shellcheck disable=SC2034
 BISECT_SCRIPT="$BIN_DIR/kab.sh"
 
 TESTED_KERNEL=""
@@ -28,12 +30,14 @@ load_config_and_handlers() {
 		echo "FATAL: Config file missing!" | tee -a "$LOG_FILE"
 		exit 1
 	fi
+	# shellcheck source=/dev/null
 	source "$CONFIG_FILE"
-	for handler in "${HANDLER_DIR}"/*.sh; do if [ -f "$handler" ]; then source "$handler"; fi; done
+	for handler in "${HANDLER_DIR}"/*.sh; do if [ -f "$handler" ]; then # shellcheck source=/dev/null
+ source "$handler"; fi; done
 	run_cmd dnf install git -yq
 
 	[[ -n $KAB_TEST_HOST ]] && return
-	rm -rf $DUMP_DIR/*
+	rm -rf "${DUMP_DIR:?}"/*
 	# 1. setsid somehow doesn't work, checkpointing will fail with "The criu itself is within dumped tree"
 	#    setsid criu-daemon.sh < /dev/null &> log_file &
 	# 2. Using a systemd service to start criu-daemon.sh somehow can lead to many
@@ -58,7 +62,7 @@ set_boot_kernel() {
 }
 
 get_original_kernel() {
-	run_cmd grubby --info=/boot/vmlinuz-$(run_cmd uname -r) | grep -E "^kernel=" | sed 's/kernel=//;s/"//g'
+	run_cmd grubby --info=/boot/vmlinuz-"$(run_cmd uname -r)" | grep -E "^kernel=" | sed 's/kernel=//;s/"//g'
 }
 
 FIRST_SIGNALED=true
@@ -132,6 +136,7 @@ reboot_and_wait() {
 	_ssh_opts+=(-o ChannelTimeout=session=2s)
 
 	ssh "${_ssh_opts[@]}" "$KAB_TEST_HOST" sync
+	# shellcheck disable=SC2029
 	ssh "${_ssh_opts[@]}" "$KAB_TEST_HOST" "$@"
 
 	_ssh_opts+=(-o ConnectTimeout=3)
@@ -180,8 +185,8 @@ remove_test_kernel() {
 	case "$INSTALL_STRATEGY" in
 	rpm) run_cmd rpm -e "kernel-core-${kernel_to_remove}" >/dev/null 2>&1 || log "Failed to remove kernel RPMs." ;;
 	git)
-		run_cmd kernel-install remove ${kernel_to_remove}
-		run_cmd rm -rf /lib/modules/${kernel_to_remove}
+		run_cmd kernel-install remove "${kernel_to_remove}"
+		run_cmd rm -rf /lib/modules/"${kernel_to_remove}"
 		;;
 	esac
 	TESTED_KERNEL=""
@@ -210,10 +215,12 @@ generate_git_repo_from_package_list() {
 	run_cmd_in_GIT_REPO git add k_url k_rel
 	run_cmd_in_GIT_REPO git commit -m "init" >/dev/null
 	while read -r _url; do
-		local _str=$(basename "$_url")
+		local _str
+		_str=$(basename "$_url")
 		_str=${_str#kernel-core-}
 		local k_rel=${_str%.rpm}
 		run_cmd_in_GIT_REPO echo "$_url" >k_url
+		# shellcheck disable=SC2094
 		run_cmd_in_GIT_REPO echo "$k_rel" >k_rel
 		run_cmd_in_GIT_REPO git commit -m "$k_rel" k_url k_rel >/dev/null
 		release_commit_map[$k_rel]=$(run_cmd_in_GIT_REPO git rev-parse HEAD)
@@ -351,6 +358,7 @@ run_cmd() {
 		if [[ -f $KAB_TEST_HOST_SSH_KEY ]]; then
 			_ssh_opts+=("-i" "$KAB_TEST_HOST_SSH_KEY")
 		fi
+		# shellcheck disable=SC2029
 		ssh "${_ssh_opts[@]}" "$KAB_TEST_HOST" "${_cmd[@]}"
 	else
 		# For simply running command locally, "$@" will a better choice than
@@ -366,6 +374,8 @@ run_cmd() {
 		#
 		#   eval cd "$GIT_REPO" '&&' git bisect log "|" grep -q "first bad commit"
 		#   ssh HOST "$GIT_REPO" '&&' git bisect log "|" grep -q "first bad commit"
+		#
+		# shellcheck disable=SC2294
 		eval "${_cmd[@]}"
 	fi
 }

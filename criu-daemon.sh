@@ -24,6 +24,7 @@ single_instance_lock() {
 }
 
 single_instance_lock
+# shellcheck disable=SC1091
 source /usr/local/bin/kernel-auto-bisect/lib.sh
 
 log() {
@@ -40,22 +41,26 @@ find_bisect_pid() {
 }
 
 do_checkpoint() {
-	local bisect_pid=$(find_bisect_pid)
+	local bisect_pid
+	bisect_pid=$(find_bisect_pid)
 	if [[ -z "$bisect_pid" ]]; then
 		log "ERROR: No bisection process found to checkpoint"
 		return 1
 	fi
 
 	log "Checkpointing bisection process (PID: $bisect_pid)"
-	log_num=$(ls -l $DUMP_LOG_DIR/dump*_cmd.log 2>/dev/null | wc -l)
+	local log_num
+	log_num=$(find "$DUMP_LOG_DIR" -maxdepth 1 -name "dump*_cmd.log" 2>/dev/null | wc -l)
 	((++log_num))
+	local dump_log
 	dump_log=$DUMP_LOG_DIR/dump${log_num}.log
+	local cmd_log
 	cmd_log=$DUMP_LOG_DIR/dump${log_num}_cmd.log
-	if criu dump -t "$bisect_pid" -D "$DUMP_DIR" --shell-job -v4 -o $dump_log &>$cmd_log; then
+	if criu dump -t "$bisect_pid" -D "$DUMP_DIR" --shell-job -v4 -o "$dump_log" &>"$cmd_log"; then
 		log "Checkpoint successful"
 		return 0
 	else
-		rm -rf "$DUMP_DIR"/*
+		rm -rf "${DUMP_DIR:?}"/*
 		log "ERROR: Checkpoint failed"
 		return 1
 	fi
@@ -68,15 +73,18 @@ do_restore() {
 		# prevent "PID mismatch on restore" https://criu.org/When_C/R_fails
 		unshare -p -m --fork --mount-proc
 
-		log_num=$(ls -l $DUMP_LOG_DIR/restore*_cmd.log 2>/dev/null | wc -l)
+		local log_num
+		log_num=$(find "$DUMP_LOG_DIR" -maxdepth 1 -name "restore*_cmd.log" 2>/dev/null | wc -l)
 		((++log_num))
-		restore_log=$DUMP_LOG_DIR/retore${log_num}.log
-		cmd_log=$DUMP_LOG_DIR/retore${log_num}_cmd.log
-		if criu restore -v4 -D "$DUMP_DIR" --shell-job --restore-detached -o $restore_log &>$cmd_log; then
+		local restore_log
+		restore_log=$DUMP_LOG_DIR/restore${log_num}.log
+		local cmd_log
+		cmd_log=$DUMP_LOG_DIR/restore${log_num}_cmd.log
+		if criu restore -v4 -D "$DUMP_DIR" --shell-job --restore-detached -o "$restore_log" &>"$cmd_log"; then
 			log "Restore successful"
 			touch "$RESTORE_FLAG"
 			# Clean up checkpoint files after successful restore
-			rm -rf "$DUMP_DIR"/*
+			rm -rf "${DUMP_DIR:?}"/*
 			return 0
 		else
 			log "ERROR: Restore failed"
@@ -94,7 +102,7 @@ handle_checkpoint() {
 	_cmd_file=${CHECKPOINT_SIGNAL}_cmd
 
 	# delete $CHECKPOINT_SIGNAL to avoid it being repeatedly consumed
-	mv $CHECKPOINT_SIGNAL "$_cmd_file"
+	mv "$CHECKPOINT_SIGNAL" "$_cmd_file"
 	rm -f "$CHECKPOINT_SIGNAL"
 
 	log "Received checkpoint+panic request"
@@ -102,7 +110,7 @@ handle_checkpoint() {
 		return 1
 	fi
 	if do_checkpoint; then
-		log "Process request: $(<$_cmd_file)"
+		log "Process request: $(<"$_cmd_file")"
 		bash "$_cmd_file"
 		exit 0
 	else
