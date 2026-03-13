@@ -14,6 +14,13 @@ do_start() {
 	run_cmd_in_GIT_REPO git bisect start "$BAD_REF" "$GOOD_REF"
 
 	main_bisect_loop
+
+	if [[ "$_auto_source_bisect" == true ]]; then
+		transition_to_source_bisect
+		main_bisect_loop
+	fi
+
+	finish
 }
 
 should_continue_bisect() {
@@ -38,7 +45,6 @@ main_bisect_loop() {
 			fi
 		fi
 	done
-	finish
 }
 
 do_start
