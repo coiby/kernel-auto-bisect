@@ -1,0 +1,5 @@
+summary: Auto-transition from RPM bisect to source bisect
+test: ./test.sh
+framework: shell
+require: [make, git]
+duration: 6h
