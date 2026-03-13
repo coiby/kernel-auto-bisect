@@ -25,6 +25,7 @@ TESTED_KERNEL=""
 ORIGINAL_KERNEL=""
 GOOD_REF=""
 BAD_REF=""
+_auto_source_bisect=false
 
 # --- Load Config and Handlers ---
 load_config_and_handlers() {
@@ -236,6 +237,103 @@ generate_git_repo_from_package_list() {
 	done <"$KERNEL_RPM_LIST"
 }
 
+# Convert NVR (with arch suffix) to a git tag name
+# e.g., "5.14.0-670.el9.x86_64" -> "kernel-5.14.0-670.el9"
+#        "6.16.5-100.fc41.x86_64" -> "kernel-6.16.5-0"
+nvr_to_tag() {
+	local nvr_without_arch="${1%.*}"
+	local tag_name="$nvr_without_arch"
+
+	# Fedora kernel-ark tags use "kernel-<version>-0" instead of the full
+	# RPM release (e.g., kernel-6.16.5-0 not kernel-6.16.5-100.fc41)
+	if [[ "$tag_name" == *.fc[0-9]* ]]; then
+		local version="${tag_name%%-*}"
+		tag_name="${version}-0"
+	fi
+
+	# Assuming always bisecting rt kernels newer than kernel-rt-5.14.0-284.rt14.284.el9
+	echo "kernel-${tag_name}"
+}
+
+# Auto-detect GIT_REPO_URL from NVR dist tag
+detect_git_repo_url() {
+	local nvr=$1
+	if [[ -n "$GIT_REPO_URL" ]]; then
+		log "Using configured GIT_REPO_URL: $GIT_REPO_URL"
+		return
+	fi
+	if [[ "$nvr" == *.el9.* || "$nvr" == *.el9 ]]; then
+		GIT_REPO_URL="https://gitlab.com/redhat/centos-stream/src/kernel/centos-stream-9.git"
+	elif [[ "$nvr" == *.el10.* || "$nvr" == *.el10 ]]; then
+		GIT_REPO_URL="https://gitlab.com/redhat/centos-stream/src/kernel/centos-stream-10.git"
+	elif [[ "$nvr" == *.fc*.* || "$nvr" == *.fc[0-9]* ]]; then
+		GIT_REPO_URL="https://gitlab.com/cki-project/kernel-ark.git"
+	else
+		do_abort "Cannot auto-detect GIT_REPO_URL from NVR: $nvr. Please set GIT_REPO_URL in bisect.conf."
+	fi
+	log "Auto-detected GIT_REPO_URL: $GIT_REPO_URL"
+}
+
+# Transition from RPM bisect to source bisect after finding the 1st bad NVR
+transition_to_source_bisect() {
+	log "=== Transitioning from RPM bisect to source bisect ==="
+
+	# HEAD is at the first bad commit in the fake repo
+	local bad_nvr good_nvr
+	bad_nvr=$(run_cmd_in_GIT_REPO cat k_rel)
+	if ! good_nvr=$(run_cmd_in_GIT_REPO git show HEAD~1:k_rel 2>/dev/null); then
+		do_abort "Cannot find the good NVR before the first bad NVR. The first entry in the RPM list may be bad."
+	fi
+
+	log "RPM bisect result: good=$good_nvr bad=$bad_nvr"
+
+	local good_tag bad_tag
+	good_tag=$(nvr_to_tag "$good_nvr")
+	bad_tag=$(nvr_to_tag "$bad_nvr")
+	log "Mapped to git tags: good=$good_tag bad=$bad_tag"
+
+	# Auto-detect source repo URL
+	detect_git_repo_url "$bad_nvr"
+
+	# Save RPM bisect log before destroying the fake repo
+	run_cmd_in_GIT_REPO git bisect log >"$WORK_DIR/rpm_bisect_final_log.txt"
+	log "RPM bisect log saved to $WORK_DIR/rpm_bisect_final_log.txt"
+
+	# Replace fake repo with real source repo (shallow clone of tag range)
+	run_cmd rm -rf "$GIT_REPO"
+	log "Fetching source repo $GIT_REPO_URL (commits between $good_tag and $bad_tag)..."
+	run_cmd git init "$GIT_REPO"
+	run_cmd_in_GIT_REPO git remote add origin "$GIT_REPO_URL"
+	# Step 1: Minimal fetch to get just the two tag objects
+	if ! run_cmd_in_GIT_REPO git fetch --depth=1 origin tag "$good_tag" tag "$bad_tag"; then
+		do_abort "Failed to fetch tags from source repo: $GIT_REPO_URL"
+	fi
+	# Step 2: Fill in commits between the two tags
+	if ! run_cmd_in_GIT_REPO git fetch --shallow-exclude="$good_tag" origin tag "$bad_tag"; then
+		do_abort "Failed to fetch commit range from source repo: $GIT_REPO_URL"
+	fi
+	# Step 3: Deepen by 1 to include the good_tag commit itself
+	run_cmd_in_GIT_REPO git fetch --deepen=1 origin
+
+	# Resolve tags to commit hashes
+	if ! GOOD_REF=$(run_cmd_in_GIT_REPO git rev-parse "$good_tag" 2>/dev/null); then
+		do_abort "Git tag '$good_tag' not found in $GIT_REPO_URL"
+	fi
+	if ! BAD_REF=$(run_cmd_in_GIT_REPO git rev-parse "$bad_tag" 2>/dev/null); then
+		do_abort "Git tag '$bad_tag' not found in $GIT_REPO_URL"
+	fi
+
+	log "Resolved source commits: good=$GOOD_REF bad=$BAD_REF"
+
+	# Switch to git install strategy
+	INSTALL_STRATEGY="git"
+	_install_handler_initilized=""
+
+	# Start new bisect
+	log "Starting source bisect between $good_tag and $bad_tag"
+	run_cmd_in_GIT_REPO git bisect start "$BAD_REF" "$GOOD_REF"
+}
+
 setup_criu() {
 	if ! command -v criu; then
 		if ! dnf install criu -yq; then
@@ -293,6 +391,18 @@ initialize() {
 	load_config_and_handlers
 
 	mkdir -p "$WORK_DIR"
+
+	# Auto mode: when INSTALL_STRATEGY is not set but KERNEL_RPM_LIST is provided,
+	# do RPM bisect first then automatically transition to source bisect
+	if [[ -z "$INSTALL_STRATEGY" ]]; then
+		if [[ -f "$KERNEL_RPM_LIST" ]]; then
+			INSTALL_STRATEGY="rpm"
+			_auto_source_bisect=true
+			log "Auto mode: will do RPM bisect then source bisect"
+		else
+			do_abort "INSTALL_STRATEGY not set and KERNEL_RPM_LIST not provided"
+		fi
+	fi
 
 	good_ref="$GOOD_COMMIT"
 	bad_ref="$BAD_COMMIT"
