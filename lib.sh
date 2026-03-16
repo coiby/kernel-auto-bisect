@@ -306,28 +306,30 @@ transition_to_source_bisect() {
 	run_cmd_in_GIT_REPO git bisect log >"$WORK_DIR/rpm_bisect_final_log.txt"
 	log "RPM bisect log saved to $WORK_DIR/rpm_bisect_final_log.txt"
 
-	# Replace fake repo with real source repo (shallow clone of tag range)
+	# Replace fake repo with real source repo
 	run_cmd rm -rf "$GIT_REPO"
-	log "Fetching source repo $GIT_REPO_URL (commits between $good_tag and $bad_tag)..."
-	run_cmd git init "$GIT_REPO"
-	run_cmd_in_GIT_REPO git remote add origin "$GIT_REPO_URL"
-	# Step 1: Minimal fetch to get just the two tag objects
-	if ! run_cmd_in_GIT_REPO git fetch --depth=1 origin tag "$good_tag" tag "$bad_tag"; then
-		do_abort "Failed to fetch tags from source repo: $GIT_REPO_URL"
+	if [[ -z $LOCAL_GIT_REPO ]] || ! setup_local_git_repo "$good_tag" "$bad_tag"; then
+		log "Fetching source repo $GIT_REPO_URL (commits between $good_tag and $bad_tag)..."
+		run_cmd git init "$GIT_REPO"
+		run_cmd_in_GIT_REPO git remote add origin "$GIT_REPO_URL"
+		# Step 1: Minimal fetch to get just the two tag objects
+		if ! run_cmd_in_GIT_REPO git fetch --depth=1 origin tag "$good_tag" tag "$bad_tag"; then
+			do_abort "Failed to fetch tags from source repo: $GIT_REPO_URL"
+		fi
+		# Step 2: Fill in commits between the two tags
+		if ! run_cmd_in_GIT_REPO git fetch --shallow-exclude="$good_tag" origin tag "$bad_tag"; then
+			do_abort "Failed to fetch commit range from source repo: $GIT_REPO_URL"
+		fi
+		# It seems there is no need to deepen by 1 because "git bisect" can start fine.
+		# And "git fetch --deepen=1" somehow fails with
+		#   error: RPC failed; HTTP 524 curl 22 The requested URL returned error: 524
+		#   fatal: expected 'packfile'
+		# # Step 3: Deepen by 1 to include the good_tag commit itself
+		# run_cmd_in_GIT_REPO git fetch --deepen=1 origin
+		# Withought checkout, git bisect start somehow will fail with the error
+		#   "error: bad HEAD - strange symbolic ref"
+		run_cmd_in_GIT_REPO git checkout "$bad_tag"
 	fi
-	# Step 2: Fill in commits between the two tags
-	if ! run_cmd_in_GIT_REPO git fetch --shallow-exclude="$good_tag" origin tag "$bad_tag"; then
-		do_abort "Failed to fetch commit range from source repo: $GIT_REPO_URL"
-	fi
-	# It seems there is no need to deepen by 1 because "git bisect" can start fine.
-	# And "git fetch --deepen=1" somehow fails with
-	#   error: RPC failed; HTTP 524 curl 22 The requested URL returned error: 524
-	#   fatal: expected 'packfile'
-	# # Step 3: Deepen by 1 to include the good_tag commit itself
-	# run_cmd_in_GIT_REPO git fetch --deepen=1 origin
-	# Withought checkout, git bisect start somehow will fail with the error
-	#   "error: bad HEAD - strange symbolic ref"
-	run_cmd_in_GIT_REPO git checkout "$bad_tag"
 
 	# Resolve tags to commit hashes
 	if ! GOOD_REF=$(run_cmd_in_GIT_REPO git rev-parse "$good_tag" 2>/dev/null); then
@@ -444,7 +446,9 @@ initialize() {
 		bad_ref=${release_commit_map[$BAD_COMMIT]}
 		if [ -z "$good_ref" ] || [ -z "$bad_ref" ]; then do_abort "Could not find GOOD/BAD versions in RPM list."; fi
 	elif [[ "$INSTALL_STRATEGY" == "git" ]]; then
-		if run_cmd test -d $GIT_REPO/.git; then
+		if [[ -n $LOCAL_GIT_REPO ]] && setup_local_git_repo "$GOOD_COMMIT" "$BAD_COMMIT"; then
+			true
+		elif run_cmd test -d $GIT_REPO/.git; then
 			log "$GIT_REPO already exists, reuse it"
 		else
 			[[ -n $GIT_REPO_BRANCH ]] && branch_arg=--branch=$GIT_REPO_BRANCH
@@ -564,6 +568,52 @@ run_cmd() {
 
 run_cmd_in_GIT_REPO() {
 	run_cmd -cwd "$GIT_REPO" "$@"
+}
+
+# Copy LOCAL_GIT_REPO to remote KAB_TEST_HOST, or use it directly if local
+#
+# setup_local_git_repo [good_ref bad_ref]
+#
+# If good_ref and bad_ref are provided, verify they exist in the local repo.
+# Returns 1 if validation fails so callers can fall back to cloning.
+setup_local_git_repo() {
+	local good_ref=$1 bad_ref=$2
+
+	if [[ -n $good_ref ]]; then
+		if ! git -C "$LOCAL_GIT_REPO" rev-parse "$good_ref" &>/dev/null; then
+			log "WARNING: '$good_ref' not found in $LOCAL_GIT_REPO, falling back to cloning"
+			return 1
+		fi
+		if ! git -C "$LOCAL_GIT_REPO" rev-parse "$bad_ref" &>/dev/null; then
+			log "WARNING: '$bad_ref' not found in $LOCAL_GIT_REPO, falling back to cloning"
+			return 1
+		fi
+	fi
+
+	if [[ -n $KAB_TEST_HOST ]]; then
+		local _ssh_opts=()
+		if [[ -f $KAB_TEST_HOST_SSH_KEY ]]; then
+			_ssh_opts+=("-i" "$KAB_TEST_HOST_SSH_KEY" -o IdentitiesOnly=yes)
+		fi
+		# Only copy .git dir to save bandwidth and avoid git bisect start
+		# failures caused by conflicted working tree files
+		log "Copying $LOCAL_GIT_REPO/.git to $KAB_TEST_HOST:$GIT_REPO/.git..."
+		run_cmd mkdir -p "$GIT_REPO"
+		if ! rsync -a -e "ssh ${_ssh_opts[*]}" "$LOCAL_GIT_REPO/.git/" "$KAB_TEST_HOST:$GIT_REPO/.git/"; then
+			do_abort "Failed to copy $LOCAL_GIT_REPO/.git to $KAB_TEST_HOST:$GIT_REPO"
+		fi
+		# Somehow, running "git checkout in the copied repo failes with error
+		# "fatal: detected dubious ownership in repository"
+		run_cmd chown -R root:root "$GIT_REPO"
+		# Reset the repo to show the sourc file. Note "git checkout" won't check out files.
+		run_cmd_in_GIT_REPO git reset --hard
+		# Without checkout, git bisect start somehow will fail with the error
+		#   "error: bad HEAD - strange symbolic ref"
+		run_cmd_in_GIT_REPO git checkout "$bad_ref"
+	else
+		GIT_REPO="$LOCAL_GIT_REPO"
+	fi
+	log "Using local git repo: $LOCAL_GIT_REPO"
 }
 
 commit_good() {
