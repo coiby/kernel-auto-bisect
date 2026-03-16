@@ -77,6 +77,7 @@ Edit `/usr/local/bin/kernel-auto-bisect/bisect.conf` after installation.
 |---|---|
 | `GIT_REPO_URL` | URL of the kernel git repository to clone |
 | `GIT_REPO_BRANCH` | Branch to clone |
+| `LOCAL_GIT_REPO` | Path to a local Linux git repo (skips cloning when set) |
 | `GOOD_COMMIT` | Git commit hash of the known-good commit |
 | `BAD_COMMIT` | Git commit hash of the known-bad commit |
 | `MAKE_JOBS` | Number of parallel make jobs (defaults to `nproc`) |
