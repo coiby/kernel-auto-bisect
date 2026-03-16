@@ -1,6 +1,7 @@
 #!/bin/bash
 # Configuration
-BIN_DIR=/usr/local/bin/kernel-auto-bisect
+# Allow running from source directory or installed location
+BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORK_DIR="/var/local/kernel-auto-bisect"
 GIT_REPO="$WORK_DIR/git_repo"
 SIGNAL_DIR="$WORK_DIR/signal"
@@ -14,6 +15,8 @@ PANIC_SIGNAL="$SIGNAL_DIR/panic_request"
 
 CONFIG_FILE="$BIN_DIR/bisect.conf"
 HANDLER_DIR="$BIN_DIR/handlers"
+# In ssh mode, when kab runs as non-root user, main.log will be be stored in
+# ~/.local/state/kernel-auto-bisect
 LOG_FILE="$WORK_DIR/main.log"
 
 # shellcheck disable=SC2034
@@ -429,6 +432,14 @@ initialize() {
 	local good_ref bad_ref
 
 	load_config_and_handlers
+
+	# In SSH mode, use a user-writable local directory for logs and reports
+	# while remote paths (GIT_REPO etc.) remain unchanged
+	if [[ -n $KAB_TEST_HOST && "$(id -u)" != 0 ]]; then
+		NONROOT_LOG_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/kernel-auto-bisect"
+		mkdir -p "$NONROOT_LOG_DIR"
+		LOG_FILE="$NONROOT_LOG_DIR/main.log"
+	fi
 
 	mkdir -p "$WORK_DIR"
 

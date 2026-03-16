@@ -45,7 +45,7 @@ When `KAB_TEST_HOST` is set, `kab.sh` runs on a controller machine and executes 
 - For panic test strategy: `kexec-tools` (kdump) configured with `crashkernel` parameter.
 - For remote mode: SSH access to the test host (password-less or key-based).
 
-## Installation
+## Installation (optional for remote mode)
 
 ```bash
 sudo make install
