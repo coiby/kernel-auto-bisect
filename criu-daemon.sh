@@ -25,7 +25,7 @@ single_instance_lock() {
 
 single_instance_lock
 # shellcheck source=lib.sh
-source /usr/local/bin/kernel-auto-bisect/lib.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
 log() {
 	echo "$(date '+%Y-%m-%d %H:%M:%S') [CRIU-DAEMON] - $1" | tee -a "$CRIU_LOG_FILE"

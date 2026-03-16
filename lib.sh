@@ -1,6 +1,7 @@
 #!/bin/bash
 # Configuration
-BIN_DIR=/usr/local/bin/kernel-auto-bisect
+# Allow running from source directory or installed location
+BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORK_DIR="/var/local/kernel-auto-bisect"
 GIT_REPO="$WORK_DIR/git_repo"
 SIGNAL_DIR="$WORK_DIR/signal"
@@ -391,6 +392,13 @@ initialize() {
 	local good_ref bad_ref
 
 	load_config_and_handlers
+
+	# In SSH mode, use a user-writable local directory for logs and reports
+	# while remote paths (GIT_REPO etc.) remain unchanged
+	if [[ -n $KAB_TEST_HOST ]]; then
+		WORK_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/kernel-auto-bisect"
+		LOG_FILE="$WORK_DIR/main.log"
+	fi
 
 	mkdir -p "$WORK_DIR"
 
