@@ -15,13 +15,20 @@ provision:
      connection: system
 
 adjust:
-    provision:
-       - name: client
-         how: connect
-         user: test
-         guest: $@KAB_CLIENT_IP_SRC
+    - when: KAB_LOCAL_GIT_REPO is defined
+      prepare+:
+         - name: Copy local repo
+           how: ansible
+           playbook: plans/copy_kernel_src.yaml
+           where: client
 
-       - name: server
-         how: connect
-         guest: $@KAB_SERVER_IP_SRC
-    when: KAB_CLIENT_IP_SRC is defined and KAB_SERVER_IP_SRC is defined
+    - when: KAB_CLIENT_IP_SRC is defined and KAB_SERVER_IP_SRC is defined
+      provision:
+         - name: client
+           how: connect
+           user: test
+           guest: $@KAB_CLIENT_IP_SRC
+
+         - name: server
+           how: connect
+           guest: $@KAB_SERVER_IP_SRC
