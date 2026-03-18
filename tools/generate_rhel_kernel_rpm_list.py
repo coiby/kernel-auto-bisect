@@ -2,7 +2,7 @@
 # -*- coding:utf-8 -*-
 #
 # This script is to generate RHEL kernel RPM list
-# $ python tools/generate_rhel_kernel_rpm_list.py 9 x86_64 >  KERNEL_RPM_LIST_PATH
+# $ python tools/generate_rhel_kernel_rpm_list.py C10S x86_64 > KERNEL_RPM_LIST_PATH
 # Then configure KERNEL_RPM_LIST as KERNEL_RPM_LIST_PATH in kdump-auto-bisect.conf
 
 import re
@@ -27,19 +27,24 @@ def get_kernel_versions():
         return versions
 
 
+version_map = {"RHEL8": "4.18.0", "RHEL9": "5.14.0", "RHEL10": "6.12.0"}
+version_map['C9S'] = version_map['RHEL9']
+version_map['C10S'] = version_map['RHEL10']
+distros = "/".join(version_map.keys())
+
 if len(sys.argv) < 3:
-    rhel_version = input("Distribution RHEL8/RHEL9/C9S?\n")
-    arch = input("Architecture:?")
+    rhel_version = input(f"Distribution {distros}?")
+    arch = input("Architecture?")
 else:
     rhel_version = sys.argv[1]
     arch = sys.argv[2]
 
-version_map = {"RHEL8": "4.18.0", "RHEL9": "5.14.0", "C9S": "5.14.0"}
 version = version_map[rhel_version]
-if rhel_version == "C9S":
-    base_url = f"https://kojihub.stream.centos.org/kojifiles/packages/kernel/5.14.0/"
+
+if rhel_version == "C9S" or rhel_version == "C10S":
+    base_url = f"https://kojihub.stream.centos.org/kojifiles/packages/kernel/{version}/"
 else:
-    rhel_version=rhel_version[-1]
+    rhel_version=rhel_version.removeprefix("RHEL")
     base_url = f"http://download.devel.redhat.com/brewroot/vol/rhel-{rhel_version}/packages/kernel/{version}"
 
 for minor in get_kernel_versions():
