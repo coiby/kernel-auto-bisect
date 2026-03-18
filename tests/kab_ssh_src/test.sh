@@ -32,7 +32,7 @@ if echo "${CLIENTS}" | grep -qi "${HOSTNAME}"; then
 	fi
 
 	LOCAL_REPO=~/local_linux_repo
-	git clone "$GIT_REPO_URL" --depth=4 "$LOCAL_REPO"
+	[[ -z $KAB_LOCAL_GIT_REPO ]] && git clone "$GIT_REPO_URL" --depth=4 "$LOCAL_REPO"
 
 	GOOD_COMMIT=$(git -C "$LOCAL_REPO" log -1 --pretty=format:'%h' HEAD~3)
 	BAD_COMMIT=$(git -C "$LOCAL_REPO" log -1 --pretty=format:'%h' HEAD)
