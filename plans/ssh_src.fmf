@@ -1,5 +1,5 @@
 discover:
-  - name: bisecting kernel source on two machines
+  - name: bisecting kernel source as non-root with LOCAL_GIT_REPO
     how: fmf
     test:
      - /tests/kab_ssh_src
@@ -8,6 +8,7 @@ provision:
    - name: client
      how: virtual
      connection: system
+     user: test
 
    - name: server
      how: virtual
@@ -17,6 +18,7 @@ adjust:
     provision:
        - name: client
          how: connect
+         user: test
          guest: $@KAB_CLIENT_IP_SRC
 
        - name: server

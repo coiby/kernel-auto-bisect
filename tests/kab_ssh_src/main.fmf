@@ -1,5 +1,5 @@
-summary: Run kernel-auto-bisect and find out the 1st bad commit
+summary: Run kernel-auto-bisect as non-root using LOCAL_GIT_REPO
 test: ./test.sh
 framework: shell
-require: [make, git]
+require: [git, rsync]
 duration: 3h
