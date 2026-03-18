@@ -8,61 +8,45 @@ set -x
 
 if echo "${CLIENTS}" | grep -qi "${HOSTNAME}"; then
 	cd "$TMT_TREE" || exit 1
-	make install
+	# Run from source directory - no make install needed
 
-	KAB_SCRIPT=/usr/local/bin/kernel-auto-bisect/kab.sh
-	CONF_FILE=/usr/local/bin/kernel-auto-bisect/bisect.conf
-	TEST_SCRIPT=/usr/local/bin/kernel-auto-bisect/test.sh
-	KERNEL_RPM_LIST=/usr/local/bin/kernel-auto-bisect/kernel_list
+	KAB_SCRIPT=$TMT_TREE/kab.sh
+	CONF_FILE=$TMT_TREE/bisect.conf
+	TEST_SCRIPT=$TMT_TREE/test.sh
 	GIT_REPO_URL=https://gitlab.com/cki-project/kernel-ark.git
-	GIT_REPO=/var/local/kernel-auto-bisect/git_repo
+	REMOTE_GIT_REPO=/var/local/kernel-auto-bisect/git_repo
 
 	TMT_TEST_PLAN_ROOT=${TMT_PLAN_DATA%data}
-	if [ -z $SERVER_SSH_KEY ]; then
-		SERVER_SSH_KEY=${TMT_TEST_PLAN_ROOT}/provision/server/id_ecdsa
+	if [ -z "$SERVER_SSH_KEY" ]; then
+		SERVER_SSH_KEY=${TMT_TEST_PLAN_ROOT}/provision/client/id_ecdsa
 	fi
 	ssh_args=(-o BatchMode=yes -o IdentitiesOnly=yes)
 	if [[ -f $SERVER_SSH_KEY ]]; then
 		ssh_args+=(-i "$SERVER_SSH_KEY")
 	fi
-	ssh_args+=(${SERVERS})
+	ssh_args+=("root@${SERVERS}")
 	# Add $SERVERS to known host
 	if ! ssh -o StrictHostKeyChecking=accept-new "${ssh_args[@]}" "exit 0"; then
 		echo "Failed to connect"
 		exit 1
 	fi
 
-	if ! ssh "${ssh_args[@]}" test -d "$GIT_REPO/.git"; then
-		if ! ssh "${ssh_args[@]}" "git clone $GIT_REPO_URL --depth=4 $GIT_REPO"; then
-			echo "Failed to clone $GIT_REPO_URL"
-			exit 1
-		fi
-	else
-		ssh "${ssh_args[@]}" "cd '$GIT_REPO' && git bisect reset"
-	fi
+	LOCAL_REPO=~/local_linux_repo
+	git clone "$GIT_REPO_URL" --depth=4 "$LOCAL_REPO"
 
-	if ! GOOD_COMMIT=$(ssh "${ssh_args[@]}" "cd $GIT_REPO && git log -1 --pretty=format:'%h' HEAD~3"); then
-		echo "Failed to get initial good commit"
-		exit 1
-	fi
-	if ! BAD_COMMIT=$(ssh "${ssh_args[@]}" "cd $GIT_REPO && git log -1 --pretty=format:'%h' HEAD"); then
-		echo "Failed to get initialbad commit"
-		exit 1
-	fi
+	GOOD_COMMIT=$(git -C "$LOCAL_REPO" log -1 --pretty=format:'%h' HEAD~3)
+	BAD_COMMIT=$(git -C "$LOCAL_REPO" log -1 --pretty=format:'%h' HEAD)
 
 	cat <<END >"$CONF_FILE"
 INSTALL_STRATEGY="git"
 TEST_STRATEGY="panic"
 GIT_REPO_URL=$GIT_REPO_URL
-GIT_REPO=$GIT_REPO
+LOCAL_GIT_REPO=$LOCAL_REPO
 GOOD_COMMIT=$GOOD_COMMIT
 BAD_COMMIT=$BAD_COMMIT
 REPRODUCER_SCRIPT=$TEST_SCRIPT
-KAB_TEST_HOST=${SERVERS}
+KAB_TEST_HOST=root@${SERVERS}
 END
-	if [[ -f "$SERVER_SSH_KEY" ]]; then
-		echo "KAB_TEST_HOST_SSH_KEY=${SERVER_SSH_KEY}" >>"$CONF_FILE"
-	fi
 
 	cat <<END >"$TEST_SCRIPT"
 #!/bin/bash
@@ -79,11 +63,32 @@ on_test() {
 }
 END
 
-	bash -x $KAB_SCRIPT </dev/null &>/root/test.log
+	bash -x "$KAB_SCRIPT" </dev/null &>test.log
+	KAB_EXIT=$?
 
-	if ssh "${ssh_args[@]}" "cd $GIT_REPO && git bisect log" | grep "first bad commit" | grep -q "$BAD_COMMIT"; then
+	LOCAL_STATE_DIR=~/.local/state/kernel-auto-bisect
+
+	if [[ $KAB_EXIT -ne 0 ]]; then
+		echo "FAIL: kab.sh failed as non-root user (exit=$KAB_EXIT)"
+		cat "test.log"
+		cat "$LOCAL_STATE_DIR/main.log" 2>/dev/null
+		exit 1
+	fi
+	echo "kab.sh ran successfully as non-root user"
+
+	# Verify 1: Bisect found the first bad commit on the remote
+	if ssh "${ssh_args[@]}" "cd $REMOTE_GIT_REPO && git bisect log" | grep "first bad commit" | grep -q "$BAD_COMMIT"; then
 		echo "Found 1st bad commit"
 	else
+		echo "FAIL: bisect did not find the first bad commit"
+		exit 1
+	fi
+
+	# Verify 2: Logs were written to user-writable location (not /var/local/)
+	if [[ -f "$LOCAL_STATE_DIR/main.log" ]]; then
+		echo "Logs written to user-writable location: $LOCAL_STATE_DIR"
+	else
+		echo "FAIL: Logs not found at $LOCAL_STATE_DIR/main.log"
 		exit 1
 	fi
 
