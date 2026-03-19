@@ -118,10 +118,16 @@ See `reproducer.sh` for a template.
 ## Running the Bisection
 
 ```bash
-sudo /usr/local/bin/kernel-auto-bisect/kab.sh
+# For local (CRIU) mode, stdin needs to closed, e.g.
+bash -x /usr/local/bin/kernel-auto-bisect/kab.sh </dev/null &>/root/bisect-xtrace.log
+
+# For ssh mode,
+bash -x /usr/local/bin/kernel-auto-bisect/kab.sh &>/root/bisect-xtrace.log
 ```
 
 Progress is logged to `/var/local/kernel-auto-bisect/main.log`. The final bisect log is saved to `/var/local/kernel-auto-bisect/bisect_final_log.txt`.
+
+For ssh mode, the program can also run as non-root user. In this case, some logs will be saved under ~/.local/state/kernel-auto-bisect.
 
 ## Tests
 
