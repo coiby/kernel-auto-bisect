@@ -104,7 +104,7 @@ Edit `/usr/local/bin/kernel-auto-bisect/bisect.conf` after installation.
 |---|---|
 | `REPRODUCER_SCRIPT` | Path to the reproducer script |
 | `RUNS_PER_COMMIT` | Number of test runs per commit (for intermittent issues, default: 1) |
-| `VERIFY_COMMITS` | Set to `yes` to skip initial good/bad commit verification |
+| `VERIFY_COMMITS` | Set to `no` to skip initial good/bad commit verification |
 
 ## Reproducer Script
 

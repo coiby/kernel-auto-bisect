@@ -480,7 +480,7 @@ initialize() {
 }
 
 verify_intial_commits() {
-	if [[ "$VERIFY_COMMITS" == "yes" ]]; then
+	if [[ "$VERIFY_COMMITS" == "no" ]]; then
 		log "Skipping verifying initial commits"
 		return 0
 	fi
