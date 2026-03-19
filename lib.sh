@@ -531,9 +531,11 @@ run_cmd() {
 		shift
 	fi
 
+	[[ -n $https_proxy ]] && _cmd+=(https_proxy=$https_proxy)
+
 	if [[ $1 == "-cwd" ]]; then
 		_dir=$2
-		_cmd=(cd "'$_dir'" "&&")
+		_cmd+=(cd "'$_dir'" "&&")
 		shift 2
 	fi
 
