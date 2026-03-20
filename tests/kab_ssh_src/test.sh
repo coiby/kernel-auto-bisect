@@ -18,7 +18,7 @@ if echo "${CLIENTS}" | grep -qi "${HOSTNAME}"; then
 
 	TMT_TEST_PLAN_ROOT=${TMT_PLAN_DATA%data}
 	if [ -z "$SERVER_SSH_KEY" ]; then
-		SERVER_SSH_KEY=${TMT_TEST_PLAN_ROOT}/provision/client/id_ecdsa
+		SERVER_SSH_KEY=${TMT_TEST_PLAN_ROOT}/provision/server/id_ecdsa
 	fi
 	ssh_args=(-o BatchMode=yes -o IdentitiesOnly=yes)
 	if [[ -f $SERVER_SSH_KEY ]]; then
@@ -47,6 +47,10 @@ BAD_COMMIT=$BAD_COMMIT
 REPRODUCER_SCRIPT=$TEST_SCRIPT
 KAB_TEST_HOST=root@${SERVERS}
 END
+
+	if [[ -f "$SERVER_SSH_KEY" ]]; then
+		echo "KAB_TEST_HOST_SSH_KEY=${SERVER_SSH_KEY}" >>"$CONF_FILE"
+	fi
 
 	cat <<END >"$TEST_SCRIPT"
 #!/bin/bash
