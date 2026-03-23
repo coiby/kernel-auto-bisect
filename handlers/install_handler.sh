@@ -3,6 +3,8 @@
 # install_handler.sh: Contains strategies for installing kernels.
 #
 
+_KERNEL_SUBPACKAGES=(core modules modules-core modules-extra)
+
 # install packages needed for kernel development
 install_kernel_devel() {
 	run_cmd dnf --setopt=install_weak_deps=False install audit-libs-devel binutils-devel clang dwarves llvm perl python3-devel elfutils-devel java-devel ncurses-devel newt-devel numactl-devel pciutils-devel perl-generators xz-devel xmlto bison openssl-devel bc openssl cpio xz tar zstd -qy
@@ -29,6 +31,39 @@ generate_mininal_config() {
 		run_cmd_in_GIT_REPO grep -e BLK_DEV_LOOP -e NFS -e SQUASHFS -e OVERLAY -e EROFS_FS "$ORIGINAL_KERNEL_CONFIG" ">>.config"
 
 	fi
+}
+
+# To avoid blowing up /boot partition, remove the tested kernel
+remove_test_kernel() {
+	local kernel_to_remove=${1:-$TESTED_KERNEL}
+	if [[ -z "$kernel_to_remove" ]]; then return; fi
+
+	# Safety check: never remove the original kernel
+	if [[ "/boot/vmlinuz-$(run_cmd uname -r)" == "$ORIGINAL_KERNEL" ]]; then
+		log "WARNING: Skipping removal of test kernel, as it is the original kernel or undefined."
+		TESTED_KERNEL=""
+		return
+	fi
+	log "Cleaning up last tested kernel: ${kernel_to_remove}"
+	case "$INSTALL_STRATEGY" in
+	rpm)
+		local _rpms_to_remove=()
+		local _prefix=${_kernel_name_prefix:-kernel}
+		for pkg in "${_KERNEL_SUBPACKAGES[@]}"; do
+			if run_cmd rpm -q "${_prefix}-${pkg}-${kernel_to_remove}" "&>/dev/null"; then
+				_rpms_to_remove+=("${_prefix}-${pkg}-${kernel_to_remove}")
+			fi
+		done
+		if [[ ${#_rpms_to_remove[@]} -gt 0 ]]; then
+			run_cmd rpm -e "${_rpms_to_remove[@]}" >/dev/null 2>&1 || log "Failed to remove kernel RPMs."
+		fi
+		;;
+	git)
+		run_cmd kernel-install remove "${kernel_to_remove}"
+		run_cmd rm -rf "/lib/modules/${kernel_to_remove}"
+		;;
+	esac
+	TESTED_KERNEL=""
 }
 
 _init_install_handler() {
@@ -147,7 +182,7 @@ install_from_rpm() {
 	else
 		_kernel_name_prefix=kernel
 	fi
-	for pkg in core modules modules-core modules-extra; do
+	for pkg in "${_KERNEL_SUBPACKAGES[@]}"; do
 		local rpm_filename="${_kernel_name_prefix}-${pkg}-${release}.rpm"
 		local rpm_path="${rpm_cache_dir}/${rpm_filename}"
 		local rpm_url="${base_url}/${rpm_filename}"

@@ -179,28 +179,6 @@ prepare_reboot() {
 	run_cmd sync
 }
 
-# To avoid blowing up /boot partition, remove the tested kernel
-remove_test_kernel() {
-	if [[ -z "$TESTED_KERNEL" ]]; then return; fi
-
-	local kernel_to_remove="$TESTED_KERNEL"
-	# Safety check: never remove the original kernel
-	if [[ -z "$kernel_to_remove" ]] || [[ "/boot/vmlinuz-$(run_cmd uname -r)" == "$ORIGINAL_KERNEL" ]]; then
-		log "WARNING: Skipping removal of test kernel, as it is the original kernel or undefined."
-		TESTED_KERNEL=""
-		return
-	fi
-	log "Cleaning up last tested kernel: ${kernel_to_remove}"
-	case "$INSTALL_STRATEGY" in
-	rpm) run_cmd rpm -e "kernel-core-${kernel_to_remove}" "kernel-modules-${kernel_to_remove}" "kernel-modules-core-${kernel_to_remove}" >/dev/null 2>&1 || log "Failed to remove kernel RPMs." ;;
-	git)
-		run_cmd kernel-install remove "${kernel_to_remove}"
-		run_cmd rm -rf "/lib/modules/${kernel_to_remove}"
-		;;
-	esac
-	TESTED_KERNEL=""
-}
-
 do_abort() {
 	log "FATAL: $1"
 	log "Aborting bisection."
