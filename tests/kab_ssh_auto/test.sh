@@ -104,8 +104,4 @@ END
 		exit 1
 	fi
 
-elif echo "${SERVERS}" | grep -qi "${HOSTNAME}"; then
-	dnf install kdump-utils -yq
-	kdumpctl reset-crashkernel --kernel=ALL
-	systemctl enable --now kdump
 fi

@@ -381,25 +381,26 @@ END
 
 setup_kdump() {
 	if [[ "$TEST_STRATEGY" == "panic" ]]; then
-		if ! command -v kdumpctl; then
-			if ! dnf install kexec-tools -yq; then
-				log "Failed to install kexec-tools!"
+		if ! run_cmd command -v kdumpctl &>/dev/null; then
+			if ! run_cmd dnf install kdump-utils -yq && ! run_cmd dnf install kexec-tools -yq; then
+				log "Failed to install kdump-utils/kexec-tools!"
 				exit 1
 			fi
 		fi
 
-		if ! grep -q "crashkernel" /proc/cmdline; then
-			log "Adding crashkernel=256M to kernel arguments"
-			run_cmd grubby --update-kernel=ALL --args="crashkernel=256M"
+		if ! run_cmd grep -q "crashkernel" /proc/cmdline; then
+			log "Setting up crashkernel via kdumpctl reset-crashkernel"
+			# Assuming the system always have >=2G RAM
+			run_cmd kdumpctl reset-crashkernel --kernel=ALL
 
 			# Ensure kdump is enabled for next boot
-			systemctl enable kdump
+			run_cmd systemctl enable kdump
 
 			log "Rebooting to apply crashkernel argument..."
-			signal_checkpoint "reboot"
+			reboot_and_wait systemctl reboot
 		else
 			# Ensure kdump is running if crashkernel is already present
-			systemctl enable --now kdump
+			run_cmd systemctl enable --now kdump
 		fi
 	fi
 }
@@ -474,9 +475,9 @@ initialize() {
 	GOOD_REF="$good_ref"
 	BAD_REF="$bad_ref"
 
+	setup_kdump
 	[[ -n $KAB_TEST_HOST ]] && return
 	setup_criu
-	setup_kdump
 }
 
 verify_intial_commits() {
