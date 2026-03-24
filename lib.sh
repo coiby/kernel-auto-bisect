@@ -26,6 +26,7 @@ BISECT_SCRIPT="$BIN_DIR/kab.sh"
 
 TESTED_KERNEL=""
 ORIGINAL_KERNEL=""
+ORIGINAL_KERNEL_RELEASE=""
 GOOD_REF=""
 BAD_REF=""
 
@@ -428,6 +429,7 @@ initialize() {
 	bad_ref="$BAD_COMMIT"
 	# Store original kernel in memory
 	ORIGINAL_KERNEL=$(get_original_kernel)
+	ORIGINAL_KERNEL_RELEASE=$(run_cmd uname -r)
 
 	if [[ "$INSTALL_STRATEGY" == "rpm" ]]; then
 		if [ ! -f "$KERNEL_RPM_LIST" ]; then do_abort "KERNEL_RPM_LIST file not found."; fi
