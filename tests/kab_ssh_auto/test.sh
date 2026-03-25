@@ -81,7 +81,7 @@ END
 	fi
 
 	# Verify 1: RPM bisect log was saved and found the first bad NVR
-	if $ssh_cmd "${SERVERS}" "cat $WORK_DIR/rpm_bisect_final_log.txt" | grep -q "first bad commit"; then
+	if grep -q "first bad commit" "$WORK_DIR/rpm_bisect_final_log.txt"; then
 		echo "RPM bisect completed successfully"
 	else
 		echo "FAIL: RPM bisect log missing or incomplete"
