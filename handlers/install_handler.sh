@@ -15,7 +15,15 @@ generate_mininal_config() {
 	# only build kernel modules that are in-use or included in initramfs
 	run_cmd lsinitrd "/boot/initramfs-${ORIGINAL_KERNEL_RELEASE}.img" "|" sed -n -E '"s/.*\/([a-zA-Z0-9_-]+).ko.xz/\1/p"' "|" xargs -n 1 modprobe
 
-	run_cmd_in_GIT_REPO yes '' '|' make localmodconfig
+	if ! run_cmd_in_GIT_REPO yes '' '|' make localmodconfig; then
+		log "Failed to run 'make localmodconfig, will try $ORIGINAL_KERNEL_CONFIG"
+		# The test kernel may be removed. As a result "make localconfig" won't work
+		run_cmd_in_GIT_REPO cp "$ORIGINAL_KERNEL_CONFIG" ".config"
+		if ! run_cmd_in_GIT_REPO yes '' '|' make localmodconfig; then
+			do_abort "Failed to run 'make localmodconfig' for the 2nd time"
+		fi
+	fi
+
 	run_cmd_in_GIT_REPO sed -i "/rhel.pem/d" .config
 	run_cmd_in_GIT_REPO sed -i "/kernel.sbat/d" .config
 
