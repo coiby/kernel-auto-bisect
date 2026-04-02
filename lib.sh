@@ -333,6 +333,8 @@ transition_to_source_bisect() {
 }
 
 setup_criu() {
+	[[ -n $KAB_TEST_HOST ]] && return 0
+
 	if ! command -v criu; then
 		if ! dnf install criu -yq; then
 			log "Failed to install criu!"
@@ -372,10 +374,13 @@ setup_kdump() {
 			# Assuming the system always have >=2G RAM
 			run_cmd kdumpctl reset-crashkernel --kernel=ALL
 
-			# Ensure kdump is enabled for next boot
-			run_cmd systemctl enable kdump
-
-			log "Rebooting to apply crashkernel argument..."
+			# crashkernel will only be set automatically for a newly installed
+			# kernel if kdump.service is enabled
+			if ! run_cmd systemctl enable kdump; then
+				do_abort "KERNEL_RPM_LIST file not found."
+			fi
+			# kexec reboot by default inherit /proc/cmdline. So make sure
+			# crashkernel exists in /proc/cmdline
 			reboot_and_wait systemctl reboot
 		else
 			# Ensure kdump is running if crashkernel is already present
@@ -455,9 +460,8 @@ initialize() {
 	GOOD_REF="$good_ref"
 	BAD_REF="$bad_ref"
 
-	setup_kdump
-	[[ -n $KAB_TEST_HOST ]] && return
 	setup_criu
+	setup_kdump
 }
 
 verify_intial_commits() {
