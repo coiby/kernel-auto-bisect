@@ -106,7 +106,8 @@ handle_checkpoint() {
 	if do_checkpoint; then
 		log "Process request: $(<"$_cmd_file")"
 		bash "$_cmd_file"
-		exit 0
+		log "Waiting for system to reboot/panic..."
+		while true; do sleep 10; done
 	else
 		log "Checkpoint failed"
 	fi
