@@ -32,7 +32,7 @@ log() {
 }
 
 init_daemon() {
-	mkdir -p "$WORK_DIR" "$DUMP_DIR" "$DUMP_LOG_DIR" "$SIGNAL_DIR"
+	mkdir -p "$WORK_DIR" "$DUMP_DIR" "$CRIU_LOG_DIR" "$SIGNAL_DIR"
 	log "CRIU daemon started, monitoring for signals"
 }
 
@@ -49,10 +49,10 @@ do_checkpoint() {
 	fi
 
 	log "Checkpointing bisection process (PID: $bisect_pid)"
-	log_num=$(find "$DUMP_LOG_DIR" -name "dump*_cmd.log" 2>/dev/null | wc -l)
+	log_num=$(find "$CRIU_LOG_DIR" -name "dump*_cmd.log" 2>/dev/null | wc -l)
 	((++log_num))
-	dump_log="$DUMP_LOG_DIR/dump${log_num}.log"
-	cmd_log="$DUMP_LOG_DIR/dump${log_num}_cmd.log"
+	dump_log="$CRIU_LOG_DIR/dump${log_num}.log"
+	cmd_log="$CRIU_LOG_DIR/dump${log_num}_cmd.log"
 	if criu dump -t "$bisect_pid" -D "$DUMP_DIR" --shell-job -v4 -o "$dump_log" &>"$cmd_log"; then
 		log "Checkpoint successful"
 		return 0
@@ -70,10 +70,10 @@ do_restore() {
 		# prevent "PID mismatch on restore" https://criu.org/When_C/R_fails
 		unshare -p -m --fork --mount-proc
 
-		log_num=$(find "$DUMP_LOG_DIR" -name "restore*_cmd.log" 2>/dev/null | wc -l)
+		log_num=$(find "$CRIU_LOG_DIR" -name "restore*_cmd.log" 2>/dev/null | wc -l)
 		((++log_num))
-		restore_log="$DUMP_LOG_DIR/retore${log_num}.log"
-		cmd_log="$DUMP_LOG_DIR/retore${log_num}_cmd.log"
+		restore_log="$CRIU_LOG_DIR/restore${log_num}.log"
+		cmd_log="$CRIU_LOG_DIR/restore${log_num}_cmd.log"
 		if criu restore -v4 -D "$DUMP_DIR" --shell-job --restore-detached -o "$restore_log" &>"$cmd_log"; then
 			log "Restore successful"
 			touch "$RESTORE_FLAG"
