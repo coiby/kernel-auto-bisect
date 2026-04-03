@@ -4,9 +4,22 @@ discover:
     test:
      - /tests/kab_criu
 
+provision:
+   - name: client
+     how: virtual
+     connection: system
+
+   - name: server
+     how: virtual
+     connection: system
+
 adjust:
     provision:
+       - name: client
+         how: connect
+         guest: $@KAB_CLIENT_IP
+
        - name: server
          how: connect
          guest: $@KAB_SERVER_IP
-    when: KAB_SERVER_IP is defined
+    when: KAB_CLIENT_IP is defined and KAB_SERVER_IP is defined
