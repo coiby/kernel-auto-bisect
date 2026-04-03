@@ -66,7 +66,6 @@ END
 	GIT_REPO=/var/local/kernel-auto-bisect/git_repo
 	MAX_WAIT_TIME=600
 	wait_time=0
-	cd "$GIT_REPO" || exit 1
 
 	if [[ -f "$SERVER_SSH_KEY" ]]; then
 		ssh_cmd="ssh -o IdentitiesOnly=yes -i $SERVER_SSH_KEY"
