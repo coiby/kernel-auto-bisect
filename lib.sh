@@ -100,7 +100,12 @@ signal_checkpoint() {
 	log "Signaling daemon to checkpoint and reboot"
 
 	if [[ $1 == reboot ]]; then
-		printf "sync\n systemctl reboot" >"$CHECKPOINT_SIGNAL"
+		if [[ -n $TMT_SLEEP_MARK ]]; then
+			_reboot_cmd="tmt-reboot"
+		else
+			_reboot_cmd="systemctl reboot"
+		fi
+		printf "sync\n ${_reboot_cmd}" >"$CHECKPOINT_SIGNAL"
 	elif [[ $1 == panic ]]; then
 		printf "sync\n echo 1 > /proc/sys/kernel/sysrq\n echo c > /proc/sysrq-trigger" >"$CHECKPOINT_SIGNAL"
 	fi
