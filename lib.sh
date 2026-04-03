@@ -24,8 +24,10 @@ CRIU_LOG_FILE="$WORK_DIR/criu-daemon.log"
 # shellcheck disable=SC2034
 BISECT_SCRIPT="$BIN_DIR/kab.sh"
 
+# shellcheck disable=SC2034
 TESTED_KERNEL=""
 ORIGINAL_KERNEL=""
+# shellcheck disable=SC2034
 ORIGINAL_KERNEL_RELEASE=""
 GOOD_REF=""
 BAD_REF=""
@@ -48,7 +50,7 @@ load_config_and_handlers() {
 	#    setsid criu-daemon.sh < /dev/null &> log_file &
 	# 2. Using a systemd service to start criu-daemon.sh somehow can lead to many
 	#    dump/restore issues like "can't write lsm profile"
-	systemd-run --unit=checkpoint-test $BIN_DIR/criu-daemon.sh
+	systemd-run --unit=checkpoint-test "$BIN_DIR"/criu-daemon.sh
 }
 
 safe_cd() {
@@ -105,7 +107,7 @@ signal_checkpoint() {
 		else
 			_reboot_cmd="systemctl reboot"
 		fi
-		printf "sync\n ${_reboot_cmd}" >"$CHECKPOINT_SIGNAL"
+		printf "sync\n %s" "${_reboot_cmd}" >"$CHECKPOINT_SIGNAL"
 	elif [[ $1 == panic ]]; then
 		printf "sync\n echo 1 > /proc/sys/kernel/sysrq\n echo c > /proc/sysrq-trigger" >"$CHECKPOINT_SIGNAL"
 	fi
@@ -439,6 +441,7 @@ initialize() {
 	bad_ref="$BAD_COMMIT"
 	# Store original kernel in memory
 	ORIGINAL_KERNEL=$(get_original_kernel)
+	# shellcheck disable=SC2034
 	ORIGINAL_KERNEL_RELEASE=$(run_cmd uname -r)
 
 	if [[ "$INSTALL_STRATEGY" == "rpm" ]]; then
@@ -450,12 +453,12 @@ initialize() {
 	elif [[ "$INSTALL_STRATEGY" == "git" ]]; then
 		if [[ -n $LOCAL_GIT_REPO ]] && setup_local_git_repo "$GOOD_COMMIT" "$BAD_COMMIT"; then
 			true
-		elif run_cmd test -d $GIT_REPO/.git; then
+		elif run_cmd test -d "$GIT_REPO"/.git; then
 			log "$GIT_REPO already exists, reuse it"
 		else
 			[[ -n $GIT_REPO_BRANCH ]] && branch_arg=--branch=$GIT_REPO_BRANCH
 			# shellcheck disable=SC2086 # $branch_arg can be empty
-			if ! run_cmd git clone "$GIT_REPO_URL" $branch_arg $GIT_REPO; then
+			if ! run_cmd git clone "$GIT_REPO_URL" $branch_arg "$GIT_REPO"; then
 				do_abort "Failed to clone $GIT_REPO_URL"
 			fi
 		fi
@@ -521,7 +524,7 @@ run_cmd() {
 		shift
 	fi
 
-	[[ -n $https_proxy ]] && _cmd+=(https_proxy=$https_proxy)
+	[[ -n $https_proxy ]] && _cmd+=("https_proxy=$https_proxy")
 
 	if [[ $1 == "-cwd" ]]; then
 		_dir=$2

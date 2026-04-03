@@ -51,9 +51,9 @@ do_checkpoint() {
 	log "Checkpointing bisection process (PID: $bisect_pid)"
 	log_num=$(find "$DUMP_LOG_DIR" -name "dump*_cmd.log" 2>/dev/null | wc -l)
 	((++log_num))
-	dump_log=$DUMP_LOG_DIR/dump${log_num}.log
-	cmd_log=$DUMP_LOG_DIR/dump${log_num}_cmd.log
-	if criu dump -t "$bisect_pid" -D "$DUMP_DIR" --shell-job -v4 -o $dump_log &>$cmd_log; then
+	dump_log="$DUMP_LOG_DIR/dump${log_num}.log"
+	cmd_log="$DUMP_LOG_DIR/dump${log_num}_cmd.log"
+	if criu dump -t "$bisect_pid" -D "$DUMP_DIR" --shell-job -v4 -o "$dump_log" &>"$cmd_log"; then
 		log "Checkpoint successful"
 		return 0
 	else
@@ -72,9 +72,9 @@ do_restore() {
 
 		log_num=$(find "$DUMP_LOG_DIR" -name "restore*_cmd.log" 2>/dev/null | wc -l)
 		((++log_num))
-		restore_log=$DUMP_LOG_DIR/retore${log_num}.log
-		cmd_log=$DUMP_LOG_DIR/retore${log_num}_cmd.log
-		if criu restore -v4 -D "$DUMP_DIR" --shell-job --restore-detached -o $restore_log &>$cmd_log; then
+		restore_log="$DUMP_LOG_DIR/retore${log_num}.log"
+		cmd_log="$DUMP_LOG_DIR/retore${log_num}_cmd.log"
+		if criu restore -v4 -D "$DUMP_DIR" --shell-job --restore-detached -o "$restore_log" &>"$cmd_log"; then
 			log "Restore successful"
 			touch "$RESTORE_FLAG"
 			# Clean up checkpoint files after successful restore
@@ -93,10 +93,10 @@ do_restore() {
 handle_checkpoint() {
 	local _cmd_file=
 
-	_cmd_file=${CHECKPOINT_SIGNAL}_cmd
+	_cmd_file="${CHECKPOINT_SIGNAL}_cmd"
 
 	# delete $CHECKPOINT_SIGNAL to avoid it being repeatedly consumed
-	mv $CHECKPOINT_SIGNAL "$_cmd_file"
+	mv "$CHECKPOINT_SIGNAL" "$_cmd_file"
 	rm -f "$CHECKPOINT_SIGNAL"
 
 	log "Received checkpoint+panic request"
@@ -104,7 +104,7 @@ handle_checkpoint() {
 		return 1
 	fi
 	if do_checkpoint; then
-		log "Process request: $(<$_cmd_file)"
+		log "Process request: $(<"$_cmd_file")"
 		bash "$_cmd_file"
 		exit 0
 	else
