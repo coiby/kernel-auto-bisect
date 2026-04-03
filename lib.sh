@@ -73,40 +73,13 @@ get_original_kernel() {
 	run_cmd grubby --info="/boot/vmlinuz-$(run_cmd uname -r)" | grep -E "^kernel=" | sed 's/kernel=//;s/"//g'
 }
 
-FIRST_SIGNALED=true
-_wait_tmt_test() {
-	[[ -z $TMT_SLEEP_MARK ]] && return
-
-	if $FIRST_SIGNALED; then
-		FIRST_SIGNALED=false
-		return
-	fi
-
-	local _wait_time=0
-	MAX_WAIT_TMT_TIME=60
-	until pgrep -f "sleep $TMT_SLEEP_MARK" >/dev/null; do
-		sleep 1
-		((++_wait_time))
-		if [[ $_wait_time -ge $MAX_WAIT_TMT_TIME ]]; then
-			echo "$KAB_TMT_TEST_SLEEP_FLAG still isn't created after ${MAX_WAIT_TMT_TIME}, something wrong. Exiting!"
-			exit 1
-		fi
-	done
-}
-
 signal_checkpoint() {
 	mkdir -p "$SIGNAL_DIR"
-
-	_wait_tmt_test
 
 	log "Signaling daemon to checkpoint and reboot"
 
 	if [[ $1 == reboot ]]; then
-		if [[ -n $TMT_SLEEP_MARK ]]; then
-			_reboot_cmd="tmt-reboot"
-		else
-			_reboot_cmd="systemctl reboot"
-		fi
+		_reboot_cmd="systemctl reboot"
 		printf "sync\n %s" "${_reboot_cmd}" >"$CHECKPOINT_SIGNAL"
 	elif [[ $1 == panic ]]; then
 		printf "sync\n echo 1 > /proc/sys/kernel/sysrq\n echo c > /proc/sysrq-trigger" >"$CHECKPOINT_SIGNAL"
