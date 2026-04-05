@@ -35,12 +35,16 @@ static-analysis:
 	@command -v shellcheck >/dev/null 2>&1 || { echo "Error: shellcheck not found. Please install it."; exit 1; }
 	shellcheck -a -x kab.sh criu-daemon.sh handlers/*.sh
 
+unit-tests:
+	@command -v shellspec >/dev/null 2>&1 || { echo "Error: shellspec not found. Please install it."; exit 1; }
+	shellspec
+
 TMT_CONTEXT_ARG := $(shell test -f KAB_TMT_CONTEXT && echo "-c @KAB_TMT_CONTEXT")
 
 integration-tests:
 	tmt $(TMT_CONTEXT_ARG) run -a
 
-tests: format-check static-analysis integration-tests
+tests: format-check static-analysis unit-tests integration-tests
 
 install:
 	@if [ "$(EUID)" -ne 0 ]; then \
