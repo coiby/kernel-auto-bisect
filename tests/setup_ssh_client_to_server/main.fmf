@@ -1,0 +1,4 @@
+summary: Set up SSH access from client to server
+test: ./test.sh
+framework: shell
+duration: 1m
