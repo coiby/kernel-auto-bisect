@@ -40,8 +40,8 @@ CONF_FILE=/usr/local/bin/kernel-auto-bisect/bisect.conf
 TEST_SCRIPT=/usr/local/bin/kernel-auto-bisect/test.sh
 KERNEL_RPM_LIST=/usr/local/bin/kernel-auto-bisect/kernel_list
 GIT_REPO=/var/local/kernel-auto-bisect/git_repo
-GOOD_COMMIT=6.16.4-100.fc41.${ARCH}
-BAD_COMMIT=6.16.7-100.fc41.${ARCH}
+GOOD_COMMIT=6.16.4-100.fc42.${ARCH}
+BAD_COMMIT=6.16.7-100.fc42.${ARCH}
 
 # 1. Prepare Target
 echo "Waiting for target ($TARGET_HOST) to be ready..."
@@ -57,14 +57,6 @@ RPM_CACHE_DIR="/var/cache/kdump-bisect-rpms"
 GOOD_COMMIT=$GOOD_COMMIT
 BAD_COMMIT=$BAD_COMMIT
 REPRODUCER_SCRIPT=$TEST_SCRIPT
-KERNEL_RPM_LIST=$KERNEL_RPM_LIST
-END
-
-cat <<END | ssh_cmd "cat >$KERNEL_RPM_LIST"
-https://kojipkgs.fedoraproject.org/packages/kernel/6.16.4/100.fc41/${ARCH}/kernel-core-6.16.4-100.fc41.${ARCH}.rpm
-https://kojipkgs.fedoraproject.org/packages/kernel/6.16.5/100.fc41/${ARCH}/kernel-core-6.16.5-100.fc41.${ARCH}.rpm
-https://kojipkgs.fedoraproject.org/packages/kernel/6.16.6/100.fc41/${ARCH}/kernel-core-6.16.6-100.fc41.${ARCH}.rpm
-https://kojipkgs.fedoraproject.org/packages/kernel/6.16.7/100.fc41/${ARCH}/kernel-core-6.16.7-100.fc41.${ARCH}.rpm
 END
 
 cat <<END | ssh_cmd "cat >$TEST_SCRIPT"
@@ -95,15 +87,20 @@ MAX_WAIT_TIME=600 # 10 minutes
 wait_time=0
 while [[ $wait_time -lt $MAX_WAIT_TIME ]]; do
 	# Try to check if finished
-	output=$(ssh_cmd "git -C $GIT_REPO bisect log | grep 'first bad commit' | grep -q '$BAD_COMMIT'")
-	ret=$?
-
-	if [[ $ret -eq 0 ]]; then
+	if ssh_cmd "git -C $GIT_REPO bisect log 2>/dev/null | grep 'first bad commit' | grep -q '$BAD_COMMIT'"; then
+		echo "Found 1st bad commit"
 		exit 0
-	else
-		echo "Target ($TARGET_HOST) is down or unreachable (exit code: $ret), waiting..."
 	fi
 
+	# Check if kab.sh has already exited (no longer running)
+	if ssh_cmd "! pgrep -f $KAB_SCRIPT" >/dev/null 2>&1; then
+		echo "kab.sh is no longer running and result was not found."
+		echo "Last lines of test.log:"
+		ssh_cmd "tail -20 /root/test.log" 2>/dev/null
+		exit 1
+	fi
+
+	echo "Waiting for bisect result ($wait_time/${MAX_WAIT_TIME}s)..."
 	sleep 10
 	wait_time=$((wait_time + 10))
 done
