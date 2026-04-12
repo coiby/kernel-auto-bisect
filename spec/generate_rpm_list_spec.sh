@@ -2,6 +2,11 @@
 
 # shellcheck shell=sh
 
+# NOTE: These tests use mock scripts to avoid network calls. They verify the
+# --nvr / arch argument handling logic but not the real scripts' scraping
+# behavior. The real integration is tested by `make update-rpm-lists` and the
+# shipped list files in rpm_lists/.
+
 Describe 'RPM List Generator Scripts'
 	Describe 'generate_fedora_kernel_rpm_list.py'
 		Context 'without --nvr flag (default URL mode)'
