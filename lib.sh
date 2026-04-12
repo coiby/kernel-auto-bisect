@@ -245,6 +245,27 @@ parse_nvr_arch() {
 	echo "${1##*.}"
 }
 
+# Construct full kernel-core RPM URL from NVR and arch
+# e.g., nvr_to_rpm_url "6.12.0-30.el10" "x86_64" ->
+#   https://kojihub.stream.centos.org/kojifiles/packages/kernel/6.12.0/30.el10/x86_64/kernel-core-6.12.0-30.el10.x86_64.rpm
+nvr_to_rpm_url() {
+	local nvr=$1 arch=$2
+	local base_url version release
+
+	version="${nvr%%-*}"
+	release="${nvr#*-}"
+
+	if [[ "$nvr" =~ \.el[0-9]+ ]]; then
+		base_url="https://kojihub.stream.centos.org/kojifiles/packages/kernel"
+	elif [[ "$nvr" =~ \.fc[0-9]+ ]]; then
+		base_url="https://kojipkgs.fedoraproject.org/packages/kernel"
+	else
+		return 1
+	fi
+
+	echo "${base_url}/${version}/${release}/${arch}/kernel-core-${nvr}.${arch}.rpm"
+}
+
 # Auto-detect GIT_REPO_URL from NVR dist tag
 detect_git_repo_url() {
 	local nvr=$1
