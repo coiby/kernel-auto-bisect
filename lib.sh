@@ -224,6 +224,27 @@ nvr_to_tag() {
 	echo "kernel-${tag_name}"
 }
 
+# Extract distro identifier from NVR for RPM list lookup
+# e.g., "6.12.0-200.el10.x86_64" -> "c10s"
+parse_nvr_distro() {
+	local nvr=$1
+	if [[ "$nvr" =~ \.el9[.] ]] || [[ "$nvr" =~ \.el9$ ]]; then
+		echo "c9s"
+	elif [[ "$nvr" =~ \.el10[.] ]] || [[ "$nvr" =~ \.el10$ ]]; then
+		echo "c10s"
+	elif [[ "$nvr" =~ \.fc[0-9]+ ]]; then
+		echo "fedora"
+	else
+		return 1
+	fi
+}
+
+# Extract architecture from NVR (last dot-separated component)
+# e.g., "6.12.0-200.el10.x86_64" -> "x86_64"
+parse_nvr_arch() {
+	echo "${1##*.}"
+}
+
 # Auto-detect GIT_REPO_URL from NVR dist tag
 detect_git_repo_url() {
 	local nvr=$1
