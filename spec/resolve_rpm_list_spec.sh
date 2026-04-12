@@ -90,4 +90,90 @@ Describe 'resolve_rpm_list helpers'
 			The status should be failure
 		End
 	End
+
+	Describe 'resolve_rpm_list'
+		setup_rpm_env() {
+			WORK_DIR="${SHELLSPEC_WORKDIR}/work"
+			BIN_DIR="${SHELLSPEC_WORKDIR}/bin"
+			mkdir -p "$WORK_DIR" "$BIN_DIR/rpm_lists"
+			KERNEL_RPM_LIST=""
+			INSTALL_STRATEGY=""
+			GENERATE_RPM_LIST=""
+			BAD_COMMIT=""
+			# Create a mock shipped NVR list
+			cat <<'EOF' >"$BIN_DIR/rpm_lists/c10s.list"
+6.12.0-30.el10
+6.12.0-31.el10
+6.12.0-32.el10
+EOF
+		}
+
+		cleanup_rpm_env() {
+			rm -rf "${SHELLSPEC_WORKDIR}/work" "${SHELLSPEC_WORKDIR}/bin"
+		}
+
+		Before 'setup_rpm_env'
+		After 'cleanup_rpm_env'
+
+		# Suppress log output
+		log() { :; }
+
+		It "skips when KERNEL_RPM_LIST is already set"
+			KERNEL_RPM_LIST="/existing/list.txt"
+			BAD_COMMIT="6.12.0-200.el10.x86_64"
+			When call resolve_rpm_list
+			The variable KERNEL_RPM_LIST should equal "/existing/list.txt"
+		End
+
+		It "skips when INSTALL_STRATEGY is git"
+			INSTALL_STRATEGY="git"
+			BAD_COMMIT="6.12.0-200.el10.x86_64"
+			When call resolve_rpm_list
+			The variable KERNEL_RPM_LIST should equal ""
+		End
+
+		It "skips when BAD_COMMIT is not an NVR"
+			BAD_COMMIT="abc123def456"
+			When call resolve_rpm_list
+			The variable KERNEL_RPM_LIST should equal ""
+		End
+
+		It "generates URL list from shipped NVR list"
+			BAD_COMMIT="6.12.0-200.el10.x86_64"
+			do_generate() {
+				resolve_rpm_list
+				echo "file=$KERNEL_RPM_LIST"
+				head -1 "$KERNEL_RPM_LIST"
+				tail -1 "$KERNEL_RPM_LIST"
+			}
+			When call do_generate
+			The line 1 should equal "file=${WORK_DIR}/kernel_rpm_list.txt"
+			The line 2 should equal \
+				"https://kojihub.stream.centos.org/kojifiles/packages/kernel/6.12.0/30.el10/x86_64/kernel-core-6.12.0-30.el10.x86_64.rpm"
+			The line 3 should equal \
+				"https://kojihub.stream.centos.org/kojifiles/packages/kernel/6.12.0/32.el10/x86_64/kernel-core-6.12.0-32.el10.x86_64.rpm"
+		End
+
+		It "calls generator script when GENERATE_RPM_LIST=yes"
+			BAD_COMMIT="6.12.0-200.el10.x86_64"
+			GENERATE_RPM_LIST="yes"
+			# Create mock generator script
+			mkdir -p "$BIN_DIR/tools"
+			cat <<'SCRIPT' >"$BIN_DIR/tools/generate_rhel_kernel_rpm_list.py"
+#!/usr/bin/env python3
+import sys
+if "--nvr" in sys.argv:
+    print("6.12.0-99.el10")
+    print("6.12.0-100.el10")
+SCRIPT
+			chmod +x "$BIN_DIR/tools/generate_rhel_kernel_rpm_list.py"
+			do_generate() {
+				resolve_rpm_list
+				head -1 "$KERNEL_RPM_LIST"
+			}
+			When call do_generate
+			The output should equal \
+				"https://kojihub.stream.centos.org/kojifiles/packages/kernel/6.12.0/99.el10/x86_64/kernel-core-6.12.0-99.el10.x86_64.rpm"
+		End
+	End
 End

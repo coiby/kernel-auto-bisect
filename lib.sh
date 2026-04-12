@@ -346,6 +346,67 @@ nvr_to_rpm_url() {
 	echo "${base_url}/${version}/${release}/${arch}/kernel-core-${nvr}.${arch}.rpm"
 }
 
+# Auto-generate KERNEL_RPM_LIST from shipped NVR lists or generator scripts.
+# Called when KERNEL_RPM_LIST is not set and BAD_COMMIT is an NVR.
+resolve_rpm_list() {
+	[[ -n "$KERNEL_RPM_LIST" ]] && return 0
+	[[ "$INSTALL_STRATEGY" == "git" ]] && return 0
+	is_nvr "$BAD_COMMIT" || return 0
+
+	local distro arch url_file
+
+	distro=$(parse_nvr_distro "$BAD_COMMIT") || do_abort "Cannot detect distro from BAD_COMMIT: $BAD_COMMIT"
+	arch=$(parse_nvr_arch "$BAD_COMMIT")
+	url_file="$WORK_DIR/kernel_rpm_list.txt"
+
+	if [[ "$GENERATE_RPM_LIST" == "yes" ]]; then
+		local generator_script generator_args
+		case "$distro" in
+		c9s)
+			generator_script="$BIN_DIR/tools/generate_rhel_kernel_rpm_list.py"
+			generator_args=(C9S "$arch")
+			;;
+		c10s)
+			generator_script="$BIN_DIR/tools/generate_rhel_kernel_rpm_list.py"
+			generator_args=(C10S "$arch")
+			;;
+		fedora)
+			generator_script="$BIN_DIR/tools/generate_fedora_kernel_rpm_list.py"
+			generator_args=("$arch")
+			;;
+		esac
+
+		if ! command -v python3 &>/dev/null; then
+			do_abort "GENERATE_RPM_LIST=yes requires python3"
+		fi
+
+		local nvr_output
+		if ! nvr_output=$(python3 "$generator_script" --nvr "${generator_args[@]}"); then
+			do_abort "Failed to generate RPM list with $generator_script"
+		fi
+
+		: >"$url_file"
+		while IFS= read -r nvr; do
+			[[ -z "$nvr" ]] && continue
+			nvr_to_rpm_url "$nvr" "$arch" >>"$url_file"
+		done <<<"$nvr_output"
+	else
+		local nvr_list_file="$BIN_DIR/rpm_lists/${distro}.list"
+		if [[ ! -f "$nvr_list_file" ]]; then
+			do_abort "Shipped RPM list not found: $nvr_list_file. Set KERNEL_RPM_LIST or use GENERATE_RPM_LIST=yes."
+		fi
+
+		: >"$url_file"
+		while IFS= read -r nvr; do
+			[[ -z "$nvr" ]] && continue
+			nvr_to_rpm_url "$nvr" "$arch" >>"$url_file"
+		done <"$nvr_list_file"
+	fi
+
+	KERNEL_RPM_LIST="$url_file"
+	log "Auto-generated KERNEL_RPM_LIST from ${distro} NVR list for ${arch}: $KERNEL_RPM_LIST"
+}
+
 # Auto-detect GIT_REPO_URL from NVR dist tag
 detect_git_repo_url() {
 	local nvr=$1
