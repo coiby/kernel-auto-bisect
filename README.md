@@ -59,6 +59,26 @@ To uninstall:
 sudo make uninstall
 ```
 
+## RPM Lists
+
+The tool ships pre-built NVR lists in `rpm_lists/` for CentOS Stream 9,
+CentOS Stream 10, and Fedora. When `KERNEL_RPM_LIST` is not set, the tool
+auto-detects the distro and architecture from `BAD_COMMIT` and uses the
+appropriate shipped list to construct RPM URLs at runtime.
+
+To generate a fresh RPM list at runtime (requires `python3`,
+`beautifulsoup4`, `packaging`), set in `bisect.conf`:
+
+```
+GENERATE_RPM_LIST="yes"
+```
+
+To refresh the shipped lists (maintainer use):
+
+```bash
+make update-rpm-lists
+```
+
 ## Configuration
 
 Edit `/usr/local/bin/kernel-auto-bisect/bisect.conf` after installation.
@@ -86,7 +106,7 @@ Edit `/usr/local/bin/kernel-auto-bisect/bisect.conf` after installation.
 
 | Variable | Description |
 |---|---|
-| `KERNEL_RPM_LIST` | Path to a file listing kernel RPM URLs, one per line (ordered from good to bad) |
+| `KERNEL_RPM_LIST` | Path to a file listing kernel RPM URLs, one per line (ordered from good to bad). Optional — when omitted, auto-selected from shipped NVR lists based on `BAD_COMMIT`. |
 | `RPM_CACHE_DIR` | Directory to cache downloaded RPMs |
 | `GOOD_COMMIT` | Kernel release string of the known-good version (e.g. `5.14.0-162.el9.aarch64`) |
 | `BAD_COMMIT` | Kernel release string of the known-bad version |
@@ -105,6 +125,7 @@ Edit `/usr/local/bin/kernel-auto-bisect/bisect.conf` after installation.
 | `REPRODUCER_SCRIPT` | Path to the reproducer script |
 | `RUNS_PER_COMMIT` | Number of test runs per commit (for intermittent issues, default: 1) |
 | `VERIFY_COMMITS` | Set to `no` to skip initial good/bad commit verification |
+| `GENERATE_RPM_LIST` | Set to `yes` to generate a fresh RPM list at runtime using Python scripts instead of shipped lists |
 
 ## Reproducer Script
 
