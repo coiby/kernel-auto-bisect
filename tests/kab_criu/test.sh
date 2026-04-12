@@ -58,6 +58,10 @@ BAD_COMMIT=$BAD_COMMIT
 REPRODUCER_SCRIPT=$TEST_SCRIPT
 END
 
+# Pass proxy settings to bisect.conf if set in the environment
+[[ -n "$http_proxy" ]] && echo "http_proxy=$http_proxy" | ssh_cmd "cat >>$CONF_FILE"
+[[ -n "$https_proxy" ]] && echo "https_proxy=$https_proxy" | ssh_cmd "cat >>$CONF_FILE"
+
 cat <<END | ssh_cmd "cat >$TEST_SCRIPT"
 #!/bin/bash
 on_test() {
