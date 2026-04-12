@@ -90,15 +90,21 @@ MAX_WAIT_TIME=600 # 10 minutes
 wait_time=0
 while [[ $wait_time -lt $MAX_WAIT_TIME ]]; do
 	# Try to check if finished
-	output=$(ssh_cmd "git -C $GIT_REPO bisect log | grep 'first bad commit' | grep -q '$BAD_COMMIT'")
-	ret=$?
-
-	if [[ $ret -eq 0 ]]; then
+	if ssh_cmd "git -C $GIT_REPO bisect log 2>/dev/null | grep 'first bad commit' | grep -q '$BAD_COMMIT'"; then
+		echo "Found 1st bad commit"
 		exit 0
-	else
-		echo "Target ($TARGET_HOST) is down or unreachable (exit code: $ret), waiting..."
 	fi
 
+	# Check if kab.sh has aborted (FATAL in log). Cannot use pgrep
+	# because the process disappears during CRIU checkpoint/restore.
+	if ssh_cmd "grep -q '^.*FATAL:' /root/test.log" 2>/dev/null; then
+		echo "kab.sh aborted."
+		echo "Last lines of test.log:"
+		ssh_cmd "tail -20 /root/test.log" 2>/dev/null
+		exit 1
+	fi
+
+	echo "Waiting for bisect result ($wait_time/${MAX_WAIT_TIME}s)..."
 	sleep 10
 	wait_time=$((wait_time + 10))
 done
