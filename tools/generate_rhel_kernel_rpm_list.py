@@ -10,6 +10,10 @@ import os
 import sys
 import urllib.request
 
+nvr_mode = "--nvr" in sys.argv
+if nvr_mode:
+    sys.argv.remove("--nvr")
+
 
 def download(url, save_path):
     if os.path.exists(save_path):
@@ -49,5 +53,8 @@ else:
 
 for minor in get_kernel_versions():
     release_version = f'{version}-{minor}'
-    url = f'{base_url}/{minor}/{arch}/kernel-core-{release_version}.{arch}.rpm'
-    print(url)
+    if nvr_mode:
+        print(release_version)
+    else:
+        url = f'{base_url}/{minor}/{arch}/kernel-core-{release_version}.{arch}.rpm'
+        print(url)
