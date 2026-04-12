@@ -40,8 +40,8 @@ CONF_FILE=/usr/local/bin/kernel-auto-bisect/bisect.conf
 TEST_SCRIPT=/usr/local/bin/kernel-auto-bisect/test.sh
 KERNEL_RPM_LIST=/usr/local/bin/kernel-auto-bisect/kernel_list
 GIT_REPO=/var/local/kernel-auto-bisect/git_repo
-GOOD_COMMIT=6.16.4-100.fc42.${ARCH}
-BAD_COMMIT=6.16.7-100.fc42.${ARCH}
+GOOD_COMMIT=6.16.4-200.fc42.${ARCH}
+BAD_COMMIT=6.16.7-200.fc42.${ARCH}
 
 # 1. Prepare Target
 echo "Waiting for target ($TARGET_HOST) to be ready..."
@@ -58,6 +58,10 @@ GOOD_COMMIT=$GOOD_COMMIT
 BAD_COMMIT=$BAD_COMMIT
 REPRODUCER_SCRIPT=$TEST_SCRIPT
 END
+
+# Pass proxy settings to bisect.conf if set in the environment
+[[ -n "$http_proxy" ]] && echo "http_proxy=$http_proxy" | ssh_cmd "cat >>$CONF_FILE"
+[[ -n "$https_proxy" ]] && echo "https_proxy=$https_proxy" | ssh_cmd "cat >>$CONF_FILE"
 
 cat <<END | ssh_cmd "cat >$TEST_SCRIPT"
 #!/bin/bash
