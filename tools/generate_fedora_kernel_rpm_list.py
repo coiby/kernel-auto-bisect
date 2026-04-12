@@ -5,7 +5,14 @@ import re
 from bs4 import BeautifulSoup
 from packaging.version import Version
 import os
+import sys
 import urllib.request
+
+nvr_mode = "--nvr" in sys.argv
+if nvr_mode:
+    sys.argv.remove("--nvr")
+
+arch = sys.argv[1] if len(sys.argv) > 1 else "x86_64"
 
 
 def download(url, save_path):
@@ -38,5 +45,8 @@ for version in get_kernel_versions():
         if ".fc" in txt:
             minor = txt
             release_version = "{}-{}".format(version, minor)
-            url = f'https://kojipkgs.fedoraproject.org/packages/kernel/{version}/{minor}/x86_64/kernel-core-{release_version}.x86_64.rpm'
-            print(url)
+            if nvr_mode:
+                print(release_version)
+            else:
+                url = f'https://kojipkgs.fedoraproject.org/packages/kernel/{version}/{minor}/{arch}/kernel-core-{release_version}.{arch}.rpm'
+                print(url)
