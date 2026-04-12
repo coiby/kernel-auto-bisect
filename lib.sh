@@ -592,6 +592,8 @@ initialize() {
 
 	mkdir -p "$WORK_DIR"
 
+	resolve_rpm_list
+
 	resolve_install_strategy
 
 	good_ref="$GOOD_COMMIT"
