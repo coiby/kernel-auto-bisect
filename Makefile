@@ -13,8 +13,10 @@ CRIU_DAEMON_SRC := criu-daemon.sh
 CONFIG_SRC := bisect.conf
 HANDLER_SRC_DIR := handlers
 HANDLER_SRCS := $(wildcard $(HANDLER_SRC_DIR)/*.sh)
+RPM_LIST_DIR := rpm_lists
+RPM_LIST_DIR_TARGET := $(BIN_DIR)/rpm_lists
 
-.PHONY: all install uninstall clean help
+.PHONY: all install uninstall clean help update-rpm-lists
 
 all: help
 
@@ -24,6 +26,7 @@ help:
 	@echo "Targets:"
 	@echo "  install      Install the bisection scripts, CRIU daemon and handlers."
 	@echo "  uninstall    Remove all installed files."
+	@echo "  update-rpm-lists  Refresh shipped NVR lists from upstream repos (requires python3)."
 	@echo "  help         Show this help message."
 
 format-check:
@@ -45,6 +48,11 @@ integration-tests:
 	tmt $(TMT_CONTEXT_ARG) run -a
 
 tests: format-check static-analysis unit-tests integration-tests
+
+update-rpm-lists:
+	python3 tools/generate_rhel_kernel_rpm_list.py --nvr C9S x86_64 > $(RPM_LIST_DIR)/c9s.list
+	python3 tools/generate_rhel_kernel_rpm_list.py --nvr C10S x86_64 > $(RPM_LIST_DIR)/c10s.list
+	python3 tools/generate_fedora_kernel_rpm_list.py --nvr > $(RPM_LIST_DIR)/fedora.list
 
 install:
 	@if [ "$(EUID)" -ne 0 ]; then \
@@ -68,6 +76,10 @@ install:
 	@echo "Copying handler scripts to $(HANDLER_DIR_TARGET)/"
 	@cp $(HANDLER_SRCS) $(HANDLER_DIR_TARGET)/
 	@chmod +x $(HANDLER_DIR_TARGET)/*.sh
+
+	@echo "Copying RPM NVR lists to $(RPM_LIST_DIR_TARGET)/"
+	@mkdir -p $(RPM_LIST_DIR_TARGET)
+	@cp $(RPM_LIST_DIR)/*.list $(RPM_LIST_DIR_TARGET)/
 
 	@if [ ! -f "$(CONFIG_FILE_TARGET)" ]; then \
 		echo "Copying default configuration to $(CONFIG_FILE_TARGET)"; \
