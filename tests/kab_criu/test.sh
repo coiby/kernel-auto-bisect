@@ -40,8 +40,8 @@ CONF_FILE=/usr/local/bin/kernel-auto-bisect/bisect.conf
 TEST_SCRIPT=/usr/local/bin/kernel-auto-bisect/test.sh
 KERNEL_RPM_LIST=/usr/local/bin/kernel-auto-bisect/kernel_list
 GIT_REPO=/var/local/kernel-auto-bisect/git_repo
-GOOD_COMMIT=6.16.4-100.fc41.${ARCH}
-BAD_COMMIT=6.16.7-100.fc41.${ARCH}
+GOOD_COMMIT=6.16.4-200.fc42.${ARCH}
+BAD_COMMIT=6.16.7-200.fc42.${ARCH}
 
 # 1. Prepare Target
 echo "Waiting for target ($TARGET_HOST) to be ready..."
@@ -56,14 +56,6 @@ REBOOT_STRATEGY=
 RPM_CACHE_DIR="/var/cache/kdump-bisect-rpms"
 BAD_COMMIT=$BAD_COMMIT
 REPRODUCER_SCRIPT=$TEST_SCRIPT
-KERNEL_RPM_LIST=$KERNEL_RPM_LIST
-END
-
-cat <<END | ssh_cmd "cat >$KERNEL_RPM_LIST"
-https://kojipkgs.fedoraproject.org/packages/kernel/6.16.4/100.fc41/${ARCH}/kernel-core-6.16.4-100.fc41.${ARCH}.rpm
-https://kojipkgs.fedoraproject.org/packages/kernel/6.16.5/100.fc41/${ARCH}/kernel-core-6.16.5-100.fc41.${ARCH}.rpm
-https://kojipkgs.fedoraproject.org/packages/kernel/6.16.6/100.fc41/${ARCH}/kernel-core-6.16.6-100.fc41.${ARCH}.rpm
-https://kojipkgs.fedoraproject.org/packages/kernel/6.16.7/100.fc41/${ARCH}/kernel-core-6.16.7-100.fc41.${ARCH}.rpm
 END
 
 cat <<END | ssh_cmd "cat >$TEST_SCRIPT"
