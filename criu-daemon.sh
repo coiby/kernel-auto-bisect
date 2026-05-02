@@ -5,6 +5,7 @@
 #
 
 set -x
+
 single_instance_lock() {
 	local _lockfile
 
@@ -104,6 +105,9 @@ handle_checkpoint() {
 		return 1
 	fi
 	if do_checkpoint; then
+		# prevent criu-daemon.sh from being restarted during reboot
+		# caused by cron job "* * * * * criu-daemon.sh"
+		systemctl stop crond
 		log "Process request: $(<"$_cmd_file")"
 		bash "$_cmd_file"
 		log "Waiting for system to reboot/panic..."
