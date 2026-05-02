@@ -795,7 +795,7 @@ setup_local_git_repo() {
 }
 
 commit_good() {
-	local commit="$1"
+	local commit="$1" ret
 	log "Evaluating commit: $commit"
 
 	run_install_strategy "$commit"
@@ -803,6 +803,11 @@ commit_good() {
 	# Let the test handler manage multiple attempts and kernel panic
 	# It will return 0 for GOOD, non-zero for BAD
 	run_test
+	ret=$?
+	if [[ $REBOOT_TO_ORIGINAL_AFTER_TEST == yes ]]; then
+		reboot_to_origin_kernel
+	fi
+	return $ret
 }
 
 generate_final_report() {
