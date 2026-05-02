@@ -258,6 +258,9 @@ find_good_commit() {
 				GOOD_COMMIT="$release"
 				GOOD_REF="$candidate"
 				return 0
+			else
+				BAD_COMMIT="$release"
+				BAD_REF="$candidate"
 			fi
 			step=$((step * 2))
 		done
