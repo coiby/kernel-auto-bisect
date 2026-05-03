@@ -16,6 +16,9 @@ _init_test_handler() {
 		run_cmd mkdir "$_dir"
 		cp_file "$REPRODUCER_SCRIPT"
 	fi
+
+	[[ -z $RUNS_PER_COMMIT ]] && RUNS_PER_COMMIT=1
+	[[ -z $RUNS_PER_GOOD_COMMIT ]] && RUNS_PER_GOOD_COMMIT=$RUNS_PER_COMMIT
 }
 
 run_test_strategy() {
@@ -25,7 +28,6 @@ run_test_strategy() {
 	fi
 
 	log "--- Phase: RUN_TEST on $(run_cmd uname -r) ---"
-	[[ -z $RUNS_PER_COMMIT ]] && RUNS_PER_COMMIT=1
 	_run_test
 }
 
@@ -81,10 +83,12 @@ handler_run_test_setup() {
 _run_test() {
 	if ! run_cmd test -f "$REPRODUCER_SCRIPT"; then do_abort "Reproducer script not found."; fi
 
-	RUN_COUNT=1
+	RUN_COUNT=0
+	GOOD_RUN_COUNT=0
 	# This loop will continue as long as tests are inconclusive and we have retries.
 	# For panic mode, each iteration involves a reboot.
-	while [[ $RUN_COUNT -le $RUNS_PER_COMMIT ]]; do
+	while [[ $RUN_COUNT -lt $RUNS_PER_COMMIT && $GOOD_RUN_COUNT -lt $RUNS_PER_GOOD_COMMIT ]]; do
+		RUN_COUNT=$((RUN_COUNT + 1))
 		log "Run attempt #${RUN_COUNT}."
 
 		if ! handler_run_test_setup; then log "WARNING: setup_test() exited non-zero."; fi
@@ -111,13 +115,18 @@ _run_test() {
 
 		# handler_run_test/on_test returning 0 means GOOD. Non-zero means BAD.
 		if ! handler_run_test; then
-			log "Test was bad on run #${RUN_COUNT}. Marking commit as bad."
-			return 1 # BAD
+			log "Test was bad on run #${RUN_COUNT}."
+		else
+			log "Test was good on run #${RUN_COUNT}."
+			GOOD_RUN_COUNT=$((GOOD_RUN_COUNT + 1))
 		fi
-
-		RUN_COUNT=$((RUN_COUNT + 1))
 	done
 
-	log "All ${RUNS_PER_COMMIT} runs were good. Marking commit as conclusively good."
-	return 0 # GOOD
+	if [[ $GOOD_RUN_COUNT -eq $RUNS_PER_GOOD_COMMIT ]]; then
+		log "${RUNS_PER_GOOD_COMMIT}/${RUN_COUNT} runs were good. Marking commit as conclusively good."
+		return 0 # GOOD
+	else
+		log "$GOOD_RUN_COUNT/${RUN_COUNT} runs were good. Marking commit as conclusively bad."
+		return 1 # BAD
+	fi
 }
