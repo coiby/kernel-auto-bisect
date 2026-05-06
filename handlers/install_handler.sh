@@ -154,7 +154,7 @@ install_from_git() {
 	[[ -z $MAKE_JOBS ]] && MAKE_JOBS=$(run_cmd nproc)
 	if ! run_cmd_in_GIT_REPO yes "" '|' make -j"${MAKE_JOBS}" ">${_build_log}" '2>&1'; then do_abort "Build failed."; fi
 
-	if ! run_cmd_in_GIT_REPO make modules_install -j ">${_build_log}" '2>&1'; then
+	if ! run_cmd_in_GIT_REPO make modules_install -j ">>${_build_log}" '2>&1'; then
 		_undo_openssl_engine_workaround
 		do_abort "Failed to install kernel modules"
 	fi
