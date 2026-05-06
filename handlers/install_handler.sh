@@ -143,7 +143,9 @@ install_from_git() {
 	log "Strategy: install_from_git for commit ${commit_to_install}"
 
 	# No need for bisect but needed for verifying initial good/bad commit
-	run_cmd_in_GIT_REPO git checkout -q "$commit_to_install"
+	if run_cmd_in_GIT_REPO git checkout -q "$commit_to_install"; then
+		do_abort "Failed to checkout $commit_to_install"
+	fi
 
 	_commit_short_id=$(run_cmd_in_GIT_REPO git rev-parse --short "$commit_to_install")
 	_openssl_engine_workaround

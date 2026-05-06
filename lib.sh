@@ -497,7 +497,9 @@ transition_to_source_bisect() {
 
 	# Start new bisect
 	log "Starting source bisect between $good_tag and $bad_tag"
-	run_cmd_in_GIT_REPO git bisect start "$BAD_REF" "$GOOD_REF"
+	if run_cmd_in_GIT_REPO git bisect start "$BAD_REF" "$GOOD_REF"; then
+		do_abort "'git bisect start $BAD_REF $GOOD_REF' failed"
+	fi
 }
 
 setup_criu() {

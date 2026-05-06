@@ -18,7 +18,9 @@ do_start() {
 	initialize
 	verify_intial_commits
 	log "Starting git bisect process"
-	run_cmd_in_GIT_REPO git bisect start "$BAD_REF" "$GOOD_REF"
+	if ! run_cmd_in_GIT_REPO git bisect start "$BAD_REF" "$GOOD_REF"; then
+		do_abort "Failed to start bisection"
+	fi
 
 	main_bisect_loop
 
