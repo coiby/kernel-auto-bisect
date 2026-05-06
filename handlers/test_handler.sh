@@ -123,10 +123,10 @@ _run_test() {
 	done
 
 	if [[ $GOOD_RUN_COUNT -eq $RUNS_PER_GOOD_COMMIT ]]; then
-		log "${RUNS_PER_GOOD_COMMIT}/${RUN_COUNT} runs were good. Marking commit as conclusively good."
+		log "${RUNS_PER_GOOD_COMMIT}/${RUN_COUNT} runs were good. Marking commit $(run_cmd uname -r) as conclusively good."
 		return 0 # GOOD
 	else
-		log "$GOOD_RUN_COUNT/${RUN_COUNT} runs were good. Marking commit as conclusively bad."
+		log "$GOOD_RUN_COUNT/${RUN_COUNT} runs were good. Marking commit $(run_cmd uname -r) as conclusively bad."
 		return 1 # BAD
 	fi
 }
