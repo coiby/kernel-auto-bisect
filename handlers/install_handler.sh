@@ -127,21 +127,11 @@ _openssl_engine_workaround() {
 	run_cmd_in_GIT_REPO cp scripts/ssl-common.h certs/
 }
 
-_undo_openssl_engine_workaround() {
-	no_openssl_engine && return 0
-
-	run_cmd_in_GIT_REPO git checkout -- scripts/sign-file.c
-	run_cmd_in_GIT_REPO git checkout -- certs/extract-cert.c
-	if ! run_cmd_in_GIT_REPO git checkout -- scripts/ssl-common.h "&>/dev/null"; then
-		run_cmd_in_GIT_REPO rm -f scripts/ssl-common.h
-	fi
-	run_cmd_in_GIT_REPO rm -f certs/ssl-common.h
-}
-
 install_from_git() {
 	local commit_to_install=$1
 	log "Strategy: install_from_git for commit ${commit_to_install}"
 
+	run_cmd_in_GIT_REPO git reset --hard
 	# No need for bisect but needed for verifying initial good/bad commit
 	if run_cmd_in_GIT_REPO git checkout -q "$commit_to_install"; then
 		do_abort "Failed to checkout $commit_to_install"
@@ -157,18 +147,16 @@ install_from_git() {
 	if ! run_cmd_in_GIT_REPO yes "" '|' make -j"${MAKE_JOBS}" ">${_build_log}" '2>&1'; then do_abort "Build failed."; fi
 
 	if ! run_cmd_in_GIT_REPO make modules_install -j ">>${_build_log}" '2>&1'; then
-		_undo_openssl_engine_workaround
 		do_abort "Failed to install kernel modules"
 	fi
 
 	if ! run_cmd_in_GIT_REPO make install ">>${_build_log}" "2>&1"; then
-		_undo_openssl_engine_workaround
 		do_abort "Failed to install kernel."
 	fi
-	_undo_openssl_engine_workaround
 	_kernelrelease_str=$(run_cmd_in_GIT_REPO make -s kernelrelease)
 	_dirty_str=-dirty
 	run_cmd grep -qe "INSTALL .*$_dirty_str" "${_build_log}" && ! grep -qe "$_dirty_str$" <<<"$_kernelrelease_str" && _kernelrelease_str+=$_dirty_str
+	run_cmd_in_GIT_REPO git reset --hard
 	TESTED_KERNEL="$_kernelrelease_str"
 }
 
