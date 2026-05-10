@@ -166,7 +166,7 @@ install_from_git() {
 	_undo_openssl_engine_workaround
 	_kernelrelease_str=$(run_cmd_in_GIT_REPO make -s kernelrelease)
 	_dirty_str=-dirty
-	run_cmd grep -qe "$_dirty_str$" "${_build_log}" && ! grep -qe "$_dirty_str$" <<<"$_kernelrelease_str" && _kernelrelease_str+=$_dirty_str
+	run_cmd grep -qe "INSTALL .*$_dirty_str" "${_build_log}" && ! grep -qe "$_dirty_str$" <<<"$_kernelrelease_str" && _kernelrelease_str+=$_dirty_str
 	TESTED_KERNEL="$_kernelrelease_str"
 }
 
