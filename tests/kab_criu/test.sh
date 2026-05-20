@@ -45,8 +45,8 @@ if [[ -z "$TARGET_HOST" ]]; then
 	# Get the subnet from the interface address
 	SUBNET=$(ip -o -4 addr show | grep "$MY_IP" | awk '{print $4}')
 	if [[ -n "$SUBNET" ]]; then
-		echo "My IP: $MY_IP, Subnet: $SUBNET. Scanning for other hosts with port 22 open..."
-		potential_hosts=$(nmap -p 22 --open -n "$SUBNET" | grep "Nmap scan report for" | awk '{print $5}' | grep -v "$MY_IP")
+		echo "My IP: $MY_IP, Subnet: $SUBNET. Scanning for other hosts with port 22 open (skipping ping)..."
+		potential_hosts=$(nmap -Pn -p 22 --open -n "$SUBNET" | grep "Nmap scan report for" | awk '{print $5}' | grep -v "$MY_IP")
 		for host in $potential_hosts; do
 			echo "Discovered potential host: $host. Testing SSH..."
 			if ssh -o BatchMode=yes -o ConnectTimeout=2 -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -i "$SERVER_SSH_KEY" "$host" "exit 0" >/dev/null 2>&1; then
