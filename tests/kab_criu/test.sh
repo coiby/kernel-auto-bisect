@@ -23,32 +23,45 @@ fi
 
 # Try to find a working host for server
 echo "Attempting to find working host for server (SERVERS=$SERVERS, hostname=server)..."
-echo "Current /etc/hosts:"
-cat /etc/hosts
+
+SERVER_SSH_KEY=$TMT_TREE/tests/ssh_keys/id_ecdsa
+chmod 600 "$SERVER_SSH_KEY"
 
 TARGET_HOST=""
+# 1. Try provided IP and name
 for host in "${SERVERS}" "server"; do
 	echo "Testing connection to $host..."
-	if ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no "$host" "exit 0" >/dev/null 2>&1; then
+	if ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -i "$SERVER_SSH_KEY" "$host" "exit 0" >/dev/null 2>&1; then
 		TARGET_HOST="$host"
 		echo "Successfully connected to $TARGET_HOST"
 		break
 	fi
 done
 
+# 2. If failed, try internal discovery via nmap
 if [[ -z "$TARGET_HOST" ]]; then
-	echo "Error: Could not connect to either $SERVERS or 'server' via SSH"
-	# More diagnostics
-	ping -c 3 "${SERVERS}"
-	ping -c 3 server
-	exit 1
+	echo "Failed to connect via public IP or 'server' hostname. Trying internal network discovery..."
+	MY_IP=$(hostname -I | awk '{print $1}')
+	# Get the subnet from the default route or first interface
+	SUBNET=$(ip route | grep "$MY_IP" | awk '{print $1}')
+	if [[ -n "$SUBNET" ]]; then
+		echo "My IP: $MY_IP, Subnet: $SUBNET. Scanning for other hosts with port 22 open..."
+		potential_hosts=$(nmap -p 22 --open -n "$SUBNET" | grep "Nmap scan report for" | awk '{print $5}' | grep -v "$MY_IP")
+		for host in $potential_hosts; do
+			echo "Discovered potential host: $host. Testing SSH..."
+			if ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -i "$SERVER_SSH_KEY" "$host" "exit 0" >/dev/null 2>&1; then
+				TARGET_HOST="$host"
+				echo "Successfully discovered server at $TARGET_HOST"
+				break
+			fi
+		done
+	fi
 fi
 
-SERVER_SSH_KEY=$TMT_TREE/tests/ssh_keys/id_ecdsa
-
-echo "TARGET_HOST: $TARGET_HOST"
-echo "SERVER_SSH_KEY: $SERVER_SSH_KEY"
-ls -l "$SERVER_SSH_KEY"
+if [[ -z "$TARGET_HOST" ]]; then
+	echo "Error: Could not connect to any server via SSH"
+	exit 1
+fi
 
 # ssh_cmd wrapper to handle local and remote execution
 ssh_cmd() {

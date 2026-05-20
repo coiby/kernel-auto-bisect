@@ -5,4 +5,5 @@ require:
   - openssh-server
   - openssh-clients
   - make
+  - nmap
 duration: 1m
