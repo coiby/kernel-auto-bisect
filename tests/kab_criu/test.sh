@@ -21,7 +21,28 @@ if ! echo "${CLIENTS}" | grep -qi "${HOSTNAME}"; then
 	exit 1
 fi
 
-TARGET_HOST="${SERVERS}"
+# Try to find a working host for server
+echo "Attempting to find working host for server (SERVERS=$SERVERS, hostname=server)..."
+echo "Current /etc/hosts:"
+cat /etc/hosts
+
+TARGET_HOST=""
+for host in "${SERVERS}" "server"; do
+	echo "Testing connection to $host..."
+	if ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no "$host" "exit 0" >/dev/null 2>&1; then
+		TARGET_HOST="$host"
+		echo "Successfully connected to $TARGET_HOST"
+		break
+	fi
+done
+
+if [[ -z "$TARGET_HOST" ]]; then
+	echo "Error: Could not connect to either $SERVERS or 'server' via SSH"
+	# More diagnostics
+	ping -c 3 "${SERVERS}"
+	ping -c 3 server
+	exit 1
+fi
 
 SERVER_SSH_KEY=$TMT_TREE/tests/ssh_keys/id_ecdsa
 

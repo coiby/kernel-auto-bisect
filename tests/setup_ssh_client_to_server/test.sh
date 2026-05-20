@@ -47,7 +47,22 @@ fi
 if command -v firewall-cmd >/dev/null 2>&1; then
     firewall-cmd --add-service=ssh --permanent || true
     firewall-cmd --reload || true
+    firewall-cmd --add-service=ssh || true
 fi
+
+# Also try to stop firewalld entirely for testing
+systemctl stop firewalld || true
+iptables -F || true
+
+# Network diagnostics
+echo "Network interfaces:"
+ip addr
+echo "Routing table:"
+ip route
+echo "Hosts file:"
+cat /etc/hosts
+echo "Listening ports:"
+ss -tlpn
 
 # Ensure PermitRootLogin is allowed on the server
 SSHD_CONFIG="/etc/ssh/sshd_config"
