@@ -1,7 +1,7 @@
 prepare:
   - name: internal-networking
     how: ansible
-    playbook: internal-networking.yml
+    playbook: plans/internal-networking.yml
 
 discover:
   - name: set up ssh access from client to server
