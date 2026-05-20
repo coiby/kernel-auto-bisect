@@ -45,11 +45,20 @@ if [[ -z "$TARGET_HOST" ]]; then
 	# Get the subnet from the interface address
 	SUBNET=$(ip -o -4 addr show | grep "$MY_IP" | awk '{print $4}')
 	if [[ -n "$SUBNET" ]]; then
-		echo "My IP: $MY_IP, Subnet: $SUBNET. Scanning for other hosts with port 22 open (skipping ping)..."
+		echo "My IP: $MY_IP, Subnet: $SUBNET. Scanning for other hosts..."
 		for retry in {1..3}; do
 			echo "Discovery attempt $retry..."
+			# Try nmap first
 			potential_hosts=$(nmap -Pn -p 22 --open --max-retries 3 --host-timeout 10s -n "$SUBNET" | grep "Nmap scan report for" | awk '{print $5}' | grep -v "$MY_IP")
+			# If nmap is sparse, try fping
+			if [[ $(echo "$potential_hosts" | wc -l) -lt 5 ]]; then
+				echo "Nmap found few hosts, trying fping..."
+				fping_hosts=$(fping -a -g "$SUBNET" 2>/dev/null | grep -v "$MY_IP")
+				potential_hosts=$(echo -e "$potential_hosts\n$fping_hosts" | sort -u)
+			fi
+			
 			for host in $potential_hosts; do
+				[[ -z "$host" ]] && continue
 				echo "Discovered potential host: $host. Testing SSH..."
 				if ssh -o BatchMode=yes -o ConnectTimeout=2 -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -i "$SERVER_SSH_KEY" "$host" "exit 0" >/dev/null 2>&1; then
 					TARGET_HOST="$host"

@@ -6,4 +6,5 @@ require:
   - openssh-clients
   - make
   - nmap
+  - fping
 duration: 1m
