@@ -1,3 +1,18 @@
+prepare:
+  - name: internal-networking
+    how: ansible
+    playbook:
+      - name: Populate /etc/hosts
+        hosts: all
+        become: yes
+        tasks:
+          - name: Add hosts
+            lineinfile:
+              path: /etc/hosts
+              line: "{{ hostvars[item]['ansible_default_ipv4']['address'] }} {{ item }}"
+            when: item != inventory_hostname
+            with_items: "{{ groups['all'] }}"
+
 discover:
   - name: set up ssh access from client to server
     how: fmf
