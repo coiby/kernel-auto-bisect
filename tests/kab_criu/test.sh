@@ -10,6 +10,12 @@ if echo "${SERVERS}" | grep -qi "${HOSTNAME}"; then
 	exit 0
 fi
 
+if [[ -z "$SERVERS" ]]; then
+	echo "Error: SERVERS is empty. TMT_TOPOLOGY_BASH content:"
+	cat "$TMT_TOPOLOGY_BASH"
+	exit 1
+fi
+
 if ! echo "${CLIENTS}" | grep -qi "${HOSTNAME}"; then
 	echo "Something wrong, can't find test client"
 	exit 1
@@ -19,15 +25,33 @@ TARGET_HOST="${SERVERS}"
 
 SERVER_SSH_KEY=$TMT_TREE/tests/ssh_keys/id_ecdsa
 
+echo "TARGET_HOST: $TARGET_HOST"
+echo "SERVER_SSH_KEY: $SERVER_SSH_KEY"
+ls -l "$SERVER_SSH_KEY"
+
 # ssh_cmd wrapper to handle local and remote execution
 ssh_cmd() {
-	local _opts="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
+	local _opts="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -v"
 	if [[ -f "$SERVER_SSH_KEY" ]]; then
+		chmod 600 "$SERVER_SSH_KEY"
 		_opts="$_opts -o IdentitiesOnly=yes -i $SERVER_SSH_KEY"
 	fi
 	ssh $_opts "$TARGET_HOST" "$@"
 	return $?
 }
+
+# Verify TMT_TREE exists on server
+if ! ssh_cmd "test -d \"$TMT_TREE\""; then
+	echo "TMT_TREE ($TMT_TREE) not found on server, trying to find it..."
+	FOUND_TREE=$(ssh_cmd "find /var/tmp/tmt -name kab.sh 2>/dev/null -print -quit | xargs dirname")
+	if [[ -n "$FOUND_TREE" ]]; then
+		TMT_TREE="$FOUND_TREE"
+		echo "Found TMT_TREE at $TMT_TREE"
+	else
+		echo "Could not find TMT_TREE on server"
+		exit 1
+	fi
+fi
 
 if ! ssh_cmd "cd $TMT_TREE && make install"; then
 	echo "Failed to install KAB on ${SERVERS}"

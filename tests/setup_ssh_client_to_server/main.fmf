@@ -1,4 +1,8 @@
 summary: Set up SSH access from client to server
 test: ./test.sh
 framework: shell
+require:
+  - openssh-server
+  - openssh-clients
+  - make
 duration: 1m
