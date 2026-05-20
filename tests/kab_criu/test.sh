@@ -46,14 +46,18 @@ if [[ -z "$TARGET_HOST" ]]; then
 	SUBNET=$(ip -o -4 addr show | grep "$MY_IP" | awk '{print $4}')
 	if [[ -n "$SUBNET" ]]; then
 		echo "My IP: $MY_IP, Subnet: $SUBNET. Scanning for other hosts with port 22 open (skipping ping)..."
-		potential_hosts=$(nmap -Pn -p 22 --open -n "$SUBNET" | grep "Nmap scan report for" | awk '{print $5}' | grep -v "$MY_IP")
-		for host in $potential_hosts; do
-			echo "Discovered potential host: $host. Testing SSH..."
-			if ssh -o BatchMode=yes -o ConnectTimeout=2 -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -i "$SERVER_SSH_KEY" "$host" "exit 0" >/dev/null 2>&1; then
-				TARGET_HOST="$host"
-				echo "Successfully discovered server at $TARGET_HOST"
-				break
-			fi
+		for retry in {1..3}; do
+			echo "Discovery attempt $retry..."
+			potential_hosts=$(nmap -Pn -p 22 --open --max-retries 3 --host-timeout 10s -n "$SUBNET" | grep "Nmap scan report for" | awk '{print $5}' | grep -v "$MY_IP")
+			for host in $potential_hosts; do
+				echo "Discovered potential host: $host. Testing SSH..."
+				if ssh -o BatchMode=yes -o ConnectTimeout=2 -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -i "$SERVER_SSH_KEY" "$host" "exit 0" >/dev/null 2>&1; then
+					TARGET_HOST="$host"
+					echo "Successfully discovered server at $TARGET_HOST"
+					break 2
+				fi
+			done
+			sleep 10
 		done
 	fi
 fi
