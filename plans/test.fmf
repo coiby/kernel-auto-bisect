@@ -1,0 +1,21 @@
+discover:
+  - name: kab on a single machine (CRIU)
+    how: shell
+    tests:
+     - name: /hello
+       test: echo Hello
+
+provision:
+   - name: client
+   - name: server
+
+adjust:
+    provision:
+       - name: client
+         how: connect
+         guest: $@KAB_CLIENT_IP
+
+       - name: server
+         how: connect
+         guest: $@KAB_SERVER_IP
+    when: KAB_CLIENT_IP is defined and KAB_SERVER_IP is defined
