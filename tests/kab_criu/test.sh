@@ -49,7 +49,7 @@ if [[ -z "$TARGET_HOST" ]]; then
 		potential_hosts=$(nmap -p 22 --open -n "$SUBNET" | grep "Nmap scan report for" | awk '{print $5}' | grep -v "$MY_IP")
 		for host in $potential_hosts; do
 			echo "Discovered potential host: $host. Testing SSH..."
-			if ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -i "$SERVER_SSH_KEY" "$host" "exit 0" >/dev/null 2>&1; then
+			if ssh -o BatchMode=yes -o ConnectTimeout=2 -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -i "$SERVER_SSH_KEY" "$host" "exit 0" >/dev/null 2>&1; then
 				TARGET_HOST="$host"
 				echo "Successfully discovered server at $TARGET_HOST"
 				break
