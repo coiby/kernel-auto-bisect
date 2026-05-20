@@ -11,10 +11,12 @@ discover:
 adjust:
     provision:
        - name: client
+         role: client
          how: connect
          guest: $@KAB_CLIENT_IP
 
        - name: server
+         role: server
          how: connect
          guest: $@KAB_SERVER_IP
     when: KAB_CLIENT_IP is defined and KAB_SERVER_IP is defined

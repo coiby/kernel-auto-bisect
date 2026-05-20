@@ -1,6 +1,8 @@
 provision:
    - name: client
+     role: client
    - name: server
+     role: server
 
 execute:
     how: tmt
