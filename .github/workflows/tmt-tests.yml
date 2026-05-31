@@ -54,7 +54,7 @@ jobs:
       - name: Install libvirt + QEMU
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients
+          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients libvirt-dev pkg-config
           sudo usermod -aG libvirt $USER
           sudo systemctl start libvirtd
           # verify KVM is available
@@ -63,7 +63,8 @@ jobs:
 
       - name: Install tmt + testcloud
         run: |
-          pip install tmt testcloud
+          pip install --user tmt testcloud
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           tmt --version
 
       - name: Run integration test (${{ matrix.plan }})
