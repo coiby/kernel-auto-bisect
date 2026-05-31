@@ -100,7 +100,7 @@ while [[ $wait_time -lt $MAX_WAIT_TIME ]]; do
 	if ssh_cmd "grep -q '^.*FATAL:' /root/test.log" 2>/dev/null; then
 		echo "kab.sh aborted."
 		echo "Last lines of test.log:"
-		ssh_cmd "tail -20 /root/test.log" 2>/dev/null
+		ssh_cmd "tail -100 /root/test.log" 2>/dev/null
 		exit 1
 	fi
 
