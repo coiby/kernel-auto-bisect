@@ -54,7 +54,7 @@ jobs:
       - name: Install libvirt + QEMU
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients libvirt-dev pkg-config
+          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients libvirt-dev pkg-config genisoimage
           sudo usermod -aG libvirt $USER
           sudo systemctl start libvirtd
           # verify KVM is available
