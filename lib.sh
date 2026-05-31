@@ -610,7 +610,7 @@ initialize() {
 	# - "make localmodconfig" can work in case the running test kernel gets removed
 	if ! ORIGINAL_KERNEL=$(get_original_kernel) || ! run_cmd test -f "$ORIGINAL_KERNEL"; then
 		ORIGINAL_KERNEL=""
-		do_abort "Failed to get original kernel, current running kernel may be removed"
+		log "WARNING: Failed to get original kernel, kernel restoration will be skipped"
 	fi
 
 	# shellcheck disable=SC2034
