@@ -69,7 +69,7 @@ jobs:
 
       - name: Run integration test (${{ matrix.plan }})
         run: |
-          tmt run -a -vvv plans --name /plans/${{ matrix.plan }}
+          sg libvirt -c "tmt run -a -vvv plans --name /plans/${{ matrix.plan }}"
 
       - name: Upload tmt artifacts on failure
         if: failure()
