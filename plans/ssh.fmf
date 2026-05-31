@@ -13,6 +13,13 @@ provision:
      how: virtual
      connection: system
 
+prepare:
+   - name: ensure kernel symlink for grubby
+     how: shell
+     script:
+       - 'kver=$(uname -r)'
+       - 'if [ ! -f /boot/vmlinuz-$kver ] && [ -f /lib/modules/$kver/vmlinuz ]; then ln -sf /lib/modules/$kver/vmlinuz /boot/vmlinuz-$kver; fi'
+
 adjust:
     provision:
        - name: client
