@@ -31,7 +31,7 @@ if echo "${CLIENTS}" | grep -qi "${HOSTNAME}"; then
 	# Note: INSTALL_STRATEGY is intentionally omitted to trigger auto mode
 	# Note: GIT_REPO_URL is intentionally omitted to test auto-detection from NVR
 	cat <<END >"$CONF_FILE"
-TEST_STRATEGY="panic"
+TEST_STRATEGY="simple"
 REBOOT_STRATEGY=
 RPM_CACHE_DIR="/var/cache/kdump-bisect-rpms"
 GOOD_COMMIT=$GOOD_COMMIT
