@@ -1,0 +1,55 @@
+name: KAB tmt integration tests
+
+on:
+  pull_request:
+  push:
+    branches: [main, random_issue_bisect]
+  workflow_dispatch:
+
+jobs:
+  # ── Lint tmt plans and tests ─────────────────────────────────────────
+  tmt-lint:
+    runs-on: ubuntu-latest
+    container: docker.io/fedora:latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install tmt
+        run: dnf install -yq tmt
+
+      - name: Lint plans
+        run: tmt plans lint
+
+      - name: Lint tests
+        run: tmt tests lint
+
+      - name: Show plans (info)
+        run: tmt plans show -v
+
+      - name: Show tests (info)
+        run: tmt tests show -v
+
+      - name: Dry-run integration (validate without executing)
+        run: tmt run --dry plans --name /plans/ssh
+
+  # ── Full integration tests (self-hosted runner with VM access) ───────
+  tmt-integration:
+    runs-on: [self-hosted, kab-test-runner]
+    if: ${{ false }}  # disabled by default — enable when runner is registered
+    needs: tmt-lint
+    timeout-minutes: 480
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run all tmt integration tests
+        run: make integration-tests
+
+      - name: Upload tmt run artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tmt-run-logs
+          path: /var/tmp/tmt/
+          if-no-files-found: ignore
