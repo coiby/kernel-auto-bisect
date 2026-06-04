@@ -109,6 +109,11 @@ run_install_strategy() {
 	if ! run_cmd test -f "$new_kernel_path"; then do_abort "Installed kernel not found at ${new_kernel_path}."; fi
 
 	set_boot_kernel "$new_kernel_path"
+
+	# Ensure crashkernel is set for newly installed test kernels
+	if [[ $TEST_STRATEGY == panic ]]; then
+		run_cmd kdumpctl reset-crashkernel --kernel="$new_kernel_path"
+	fi
 }
 
 no_openssl_engine() {
