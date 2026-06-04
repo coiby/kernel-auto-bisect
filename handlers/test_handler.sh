@@ -97,11 +97,17 @@ _run_test() {
 			# This logic is reached on the first run, or after an inconclusive run.
 			log "Preparing to trigger panic for run #${RUN_COUNT}."
 			local count=0
-			while :; do
+			log "DEBUG: kdumpctl status output: $(run_cmd kdumpctl status 2>&1 || true)"
+		log "DEBUG: systemctl status kdump: $(run_cmd systemctl status kdump 2>&1 || true)"
+		log "DEBUG: cat /proc/cmdline: $(run_cmd cat /proc/cmdline)"
+		log "DEBUG: free -m: $(run_cmd free -m)"
+		while :; do
 				run_cmd kdumpctl status && break
 				sleep 5
 				count=$((count + 5))
 				if [[ $count -gt 60 ]]; then
+					log "DEBUG: final kdumpctl status: $(run_cmd kdumpctl status 2>&1 || true)"
+					log "DEBUG: final systemctl status: $(run_cmd systemctl status kdump 2>&1 || true)"
 					do_abort "kdump service not ready after 60s. Aborting."
 				fi
 			done
