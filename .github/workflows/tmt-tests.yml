@@ -24,16 +24,16 @@ jobs:
         run: tmt tests lint
 
       - name: Dry-run ssh plan
-        run: tmt run --dry plans --name /plans/ssh
+        run: tmt run --dry plans --name '/plans/ssh$'
 
       - name: Dry-run ssh_src plan
-        run: tmt run --dry plans --name /plans/ssh_src
+        run: tmt run --dry plans --name '/plans/ssh_src$'
 
       - name: Dry-run ssh_auto plan
-        run: tmt run --dry plans --name /plans/ssh_auto
+        run: tmt run --dry plans --name '/plans/ssh_auto$'
 
       - name: Dry-run criu plan
-        run: tmt run --dry plans --name /plans/criu
+        run: tmt run --dry plans --name '/plans/criu$'
 
   # ── Full integration tests (push to main / manual dispatch) ──────────
   #
@@ -69,7 +69,7 @@ jobs:
 
       - name: Run integration test (${{ matrix.plan }})
         run: |
-          sg libvirt -c "tmt run -a -vvv plans --name /plans/${{ matrix.plan }}"
+          sg libvirt -c "tmt run -a -vvv plans --name '/plans/${{ matrix.plan }}$'"
 
       - name: Upload tmt artifacts on failure
         if: failure()
