@@ -41,7 +41,6 @@ jobs:
   # two Fedora VMs via testcloud and runs the bisection end-to-end.
   #
   tmt-run:
-    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
