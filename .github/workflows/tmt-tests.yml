@@ -72,6 +72,7 @@ jobs:
 
       - name: Upload tmt artifacts on failure
         uses: actions/upload-artifact@v7
+        if: always()
         with:
           name: tmt-run-${{ matrix.plan }}
           path: /var/tmp/tmt/run*
