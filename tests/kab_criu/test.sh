@@ -51,7 +51,7 @@ done
 
 cat <<END | ssh_cmd "cat >$CONF_FILE"
 INSTALL_STRATEGY="rpm"
-TEST_STRATEGY="simple"
+TEST_STRATEGY="panic"
 REBOOT_STRATEGY=
 RPM_CACHE_DIR="/var/cache/kdump-bisect-rpms"
 BAD_COMMIT=$BAD_COMMIT
