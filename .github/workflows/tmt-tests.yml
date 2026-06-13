@@ -49,7 +49,7 @@ jobs:
         plan: [ssh, ssh_src, ssh_auto, criu]
     timeout-minutes: 480
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Install libvirt + QEMU
         run: |
@@ -72,8 +72,7 @@ jobs:
           sg libvirt -c "tmt run -a -vvv plans --name '/plans/${{ matrix.plan }}$'"
 
       - name: Upload tmt artifacts on failure
-        if: failure()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: tmt-run-${{ matrix.plan }}
           path: /var/tmp/tmt/run*
