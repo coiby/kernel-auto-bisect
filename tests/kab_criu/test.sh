@@ -2,6 +2,7 @@
 # vim: dict+=/usr/share/beakerlib/dictionary.vim cpt=.,w,b,u,t,i,k
 set -x
 
+. ../test_lib.sh
 . ./tmt.sh
 
 [[ -z $ARCH ]] && ARCH=$(uname -m)
@@ -20,14 +21,20 @@ TARGET_HOST="${SERVERS}"
 TMT_TEST_PLAN_ROOT=${TMT_PLAN_DATA%data}
 SERVER_SSH_KEY=${TMT_TEST_PLAN_ROOT}/provision/server/id_ecdsa
 
+ssh_opts=(-o StrictHostKeyChecking=accept-new -o ConnectTimeout=10)
+
+if [[ -f "$SERVER_SSH_KEY" ]]; then
+	ssh_opts+=(-o IdentitiesOnly=yes -i $SERVER_SSH_KEY)
+fi
+
 # ssh_cmd wrapper to handle local and remote execution
 ssh_cmd() {
-	local _opts="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
-	if [[ -f "$SERVER_SSH_KEY" ]]; then
-		_opts="$_opts -o IdentitiesOnly=yes -i $SERVER_SSH_KEY"
-	fi
-	ssh $_opts "$TARGET_HOST" "$@"
+	ssh "${ssh_opts[@]}" "$TARGET_HOST" "$@"
 	return $?
+}
+
+copy_xtrace_log() {
+	scp "${ssh_opts[@]}" "${TARGET_HOST}:${XTRACE_LOG}" "$XTRACE_LOG"
 }
 
 if ! ssh_cmd "cd $TMT_TREE && make install"; then
@@ -83,10 +90,11 @@ END
 
 # For idempotence
 ssh_cmd "rm -rf $GIT_REPO"
+
 # 2. Start kab.sh on Target if not already running and no checkpoint exists
 if ! ssh_cmd "pgrep -f $KAB_SCRIPT" >/dev/null 2>&1 && ! ssh_cmd "ls /var/local/kernel-auto-bisect/dump/core-*.img" >/dev/null 2>&1; then
 	echo "Starting kab.sh..."
-	ssh_cmd "setsid bash -x $KAB_SCRIPT </dev/null &>/root/test.log &"
+	ssh_cmd "setsid bash -x $KAB_SCRIPT </dev/null &>$XTRACE_LOG &"
 fi
 
 # 3. Wait for result
@@ -98,6 +106,7 @@ while [[ $wait_time -lt $MAX_WAIT_TIME ]]; do
 	ret=$?
 
 	if [[ $ret -eq 0 ]]; then
+		copy_xtrace_log
 		exit 0
 	else
 		echo "Target ($TARGET_HOST) is down or unreachable (exit code: $ret), waiting..."
@@ -107,5 +116,6 @@ while [[ $wait_time -lt $MAX_WAIT_TIME ]]; do
 	wait_time=$((wait_time + 10))
 done
 
+copy_xtrace_log
 echo "Failed to get 1st bad commit within $MAX_WAIT_TIME seconds"
 exit 1
