@@ -2,6 +2,7 @@
 # vim: dict+=/usr/share/beakerlib/dictionary.vim cpt=.,w,b,u,t,i,k
 set -x
 
+. ../test_lib.sh
 . ./tmt.sh
 
 [[ -z $ARCH ]] && ARCH=$(uname -m)
@@ -66,14 +67,14 @@ on_test() {
 }
 END
 
-	bash -x "$KAB_SCRIPT" </dev/null &>test.log
+	bash -x "$KAB_SCRIPT" </dev/null &>"$XTRACE_LOG"
 	KAB_EXIT=$?
 
 	LOCAL_STATE_DIR=~/.local/state/kernel-auto-bisect
 
 	if [[ $KAB_EXIT -ne 0 ]]; then
 		echo "FAIL: kab.sh failed as non-root user (exit=$KAB_EXIT)"
-		cat "test.log"
+		cat "$XTRACE_LOG"
 		cat "$LOCAL_STATE_DIR/main.log" 2>/dev/null
 		exit 1
 	fi
