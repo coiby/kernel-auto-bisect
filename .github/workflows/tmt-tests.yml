@@ -68,7 +68,7 @@ jobs:
 
       - name: Run integration test (${{ matrix.plan }})
         run: |
-          sg libvirt -c "tmt run -a -vvv plans --name '/plans/${{ matrix.plan }}$'"
+          sg libvirt -c "tmt run -a provision -h virtual -c system -i fedora:43 -vvv plans --name '/plans/${{ matrix.plan }}$'"
 
       - name: Upload tmt artifacts on failure
         uses: actions/upload-artifact@v7
