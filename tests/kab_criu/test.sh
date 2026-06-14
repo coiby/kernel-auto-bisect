@@ -77,7 +77,7 @@ on_test() {
 }
 END
 
-XTRACE_LOG="${TMT_TREE}/test.log"
+XTRACE_LOG="${TMT_PLAN_DATA}/test.log"
 # For idempotence
 ssh_cmd "rm -rf $GIT_REPO"
 # 2. Start kab.sh on Target if not already running and no checkpoint exists

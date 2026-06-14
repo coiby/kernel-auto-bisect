@@ -6,6 +6,7 @@ set -x
 
 [[ -z $ARCH ]] && ARCH=$(uname -m)
 
+XTRACE_LOG="${TMT_PLAN_DATA}/test.log"
 if echo "${CLIENTS}" | grep -qi "${HOSTNAME}"; then
 	cd "$TMT_TREE" || exit 1
 	make install
@@ -62,7 +63,7 @@ on_test() {
 }
 END
 
-	bash -x $KAB_SCRIPT </dev/null &>/root/test.log
+	bash -x $KAB_SCRIPT </dev/null &>"$XTRACE_LOG"
 	GIT_REPO=/var/local/kernel-auto-bisect/git_repo
 	MAX_WAIT_TIME=600
 	wait_time=0
@@ -76,7 +77,7 @@ END
 		echo "Found 1st bad commit"
 	else
 		echo "=== last 100 lines of test.log ==="
-		tail -100 /root/test.log
+		tail -100 "$XTRACE_LOG"
 		exit 1
 	fi
 fi

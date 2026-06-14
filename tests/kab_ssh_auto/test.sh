@@ -72,7 +72,7 @@ on_test() {
 }
 END
 
-	bash -x $KAB_SCRIPT </dev/null &>"$TMT_TREE"/test.log
+	bash -x $KAB_SCRIPT </dev/null &>"$TMT_PLAN_DATA"/test.log
 
 	if [[ -f "$SERVER_SSH_KEY" ]]; then
 		ssh_cmd="ssh -o IdentitiesOnly=yes -i $SERVER_SSH_KEY"
