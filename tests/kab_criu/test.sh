@@ -77,12 +77,13 @@ on_test() {
 }
 END
 
+XTRACE_LOG="${TMT_PLAN_DATA}/test.log"
 # For idempotence
 ssh_cmd "rm -rf $GIT_REPO"
 # 2. Start kab.sh on Target if not already running and no checkpoint exists
 if ! ssh_cmd "pgrep -f $KAB_SCRIPT" >/dev/null 2>&1 && ! ssh_cmd "ls /var/local/kernel-auto-bisect/dump/core-*.img" >/dev/null 2>&1; then
 	echo "Starting kab.sh..."
-	ssh_cmd "setsid bash -x $KAB_SCRIPT </dev/null &>/root/test.log &"
+	ssh_cmd "setsid bash -x $KAB_SCRIPT </dev/null &>$XTRACE_LOG &"
 fi
 
 # 3. Wait for result
@@ -97,10 +98,10 @@ while [[ $wait_time -lt $MAX_WAIT_TIME ]]; do
 
 	# Check if kab.sh has aborted (FATAL in log). Cannot use pgrep
 	# because the process disappears during CRIU checkpoint/restore.
-	if ssh_cmd "grep -q '^.*FATAL:' /root/test.log" 2>/dev/null; then
+	if ssh_cmd "grep -q '^.*FATAL:' $XTRACE_LOG" 2>/dev/null; then
 		echo "kab.sh aborted."
 		echo "Last lines of test.log:"
-		ssh_cmd "tail -20 /root/test.log" 2>/dev/null
+		ssh_cmd "tail -100 $XTRACE_LOG" 2>/dev/null
 		exit 1
 	fi
 

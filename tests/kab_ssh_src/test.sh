@@ -66,14 +66,16 @@ on_test() {
 }
 END
 
-	bash -x "$KAB_SCRIPT" </dev/null &>test.log
+XTRACE_LOG="${TMT_PLAN_DATA}/test.log"
+
+	bash -x "$KAB_SCRIPT" </dev/null &>"$XTRACE_LOG"
 	KAB_EXIT=$?
 
 	LOCAL_STATE_DIR=~/.local/state/kernel-auto-bisect
 
 	if [[ $KAB_EXIT -ne 0 ]]; then
 		echo "FAIL: kab.sh failed as non-root user (exit=$KAB_EXIT)"
-		cat "test.log"
+		cat "$XTRACE_LOG"
 		cat "$LOCAL_STATE_DIR/main.log" 2>/dev/null
 		exit 1
 	fi

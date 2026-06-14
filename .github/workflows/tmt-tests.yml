@@ -1,0 +1,79 @@
+name: KAB tmt integration tests
+
+on:
+  pull_request:
+  push:
+    branches: [main, random_issue_bisect]
+  workflow_dispatch:
+
+jobs:
+  # ── Fast validation (every PR) ───────────────────────────────────────
+  tmt-lint:
+    runs-on: ubuntu-latest
+    container: docker.io/fedora:latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install tmt
+        run: dnf install -yq tmt
+
+      - name: Lint all plans
+        run: tmt plans lint
+
+      - name: Lint all tests
+        run: tmt tests lint
+
+      - name: Dry-run ssh plan
+        run: tmt run --dry plans --name '/plans/ssh$'
+
+      - name: Dry-run ssh_src plan
+        run: tmt run --dry plans --name '/plans/ssh_src$'
+
+      - name: Dry-run ssh_auto plan
+        run: tmt run --dry plans --name '/plans/ssh_auto$'
+
+      - name: Dry-run criu plan
+        run: tmt run --dry plans --name '/plans/criu$'
+
+  # ── Full integration tests (push to main / manual dispatch) ──────────
+  #
+  # Uses GitHub-hosted runners with nested KVM. Each plan provisions
+  # two Fedora VMs via testcloud and runs the bisection end-to-end.
+  #
+  tmt-run:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        plan: [ssh, ssh_src, ssh_auto, criu]
+    timeout-minutes: 480
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install libvirt + QEMU
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients libvirt-dev pkg-config genisoimage
+          sudo usermod -aG libvirt $USER
+          sudo systemctl start libvirtd
+          # verify KVM is available
+          test -e /dev/kvm && echo "KVM OK" || echo "WARNING: /dev/kvm missing"
+          sudo virsh list --all
+
+      - name: Install tmt + testcloud
+        run: |
+          pip install --user tmt testcloud
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          tmt --version
+
+      - name: Run integration test (${{ matrix.plan }})
+        run: |
+          sg libvirt -c "tmt run -a provision -h virtual -c system -i fedora:43 -vvv plans --name '/plans/${{ matrix.plan }}$'"
+
+      - name: Upload tmt artifacts on failure
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: tmt-run-${{ matrix.plan }}
+          path: /var/tmp/tmt/run*
+          if-no-files-found: ignore

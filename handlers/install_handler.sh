@@ -133,7 +133,7 @@ install_from_git() {
 
 	run_cmd_in_GIT_REPO git reset --hard
 	# No need for bisect but needed for verifying initial good/bad commit
-	if run_cmd_in_GIT_REPO git checkout -q "$commit_to_install"; then
+	if ! run_cmd_in_GIT_REPO git checkout -q "$commit_to_install"; then
 		do_abort "Failed to checkout $commit_to_install"
 	fi
 
