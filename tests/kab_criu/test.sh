@@ -3,7 +3,6 @@
 set -x
 
 . ../test_lib.sh
-. ./tmt.sh
 
 [[ -z $ARCH ]] && ARCH=$(uname -m)
 
