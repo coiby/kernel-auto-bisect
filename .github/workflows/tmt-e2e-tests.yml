@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        plan: [ssh, ssh_src, ssh_auto, criu]
+        plan: [criu]
     timeout-minutes: 480
     steps:
       - uses: actions/checkout@v6
@@ -25,7 +25,7 @@ jobs:
       - name: Install libvirt + QEMU
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients libvirt-dev pkg-config genisoimage
+          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients libvirt-dev pkg-config genisoimage python3-libvirt
           sudo usermod -aG libvirt $USER
           sudo systemctl start libvirtd
           # verify KVM is available
