@@ -28,7 +28,8 @@ jobs:
       - name: Install tmt
         run: |
           dnf install tmt+provision-virtual -yq
-          systemctl start libvirtd
+          #systemctl start libvirtd
+          libvirtd -d
           # verify KVM is available
           test -e /dev/kvm && echo "KVM OK" || echo "WARNING: /dev/kvm missing"
           virsh list --all
