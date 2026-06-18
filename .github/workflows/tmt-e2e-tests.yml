@@ -40,6 +40,6 @@ jobs:
 
       - name: TMT mimi
         run: |
-          mkdir test_tmt && cd test_tmt
+          mkdir /tmp/test_tmt && cd /tmp/test_tmt
           tmt init -t mini
           sg libvirt -c "tmt run -a provision -h virtual -c system -i fedora:43 execute -vvv"
