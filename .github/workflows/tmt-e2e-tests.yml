@@ -35,8 +35,15 @@ jobs:
           test -e /dev/kvm && echo "KVM OK" || echo "WARNING: /dev/kvm missing"
           virsh list --all
 
-      - name: TMT mimi
+
+      - name: Run e2e test (${{ matrix.plan }})
         run: |
-          mkdir /tmp/test_tmt && cd /tmp/test_tmt
-          tmt init -t mini
-          tmt run -a provision -h virtual -c system -i fedora:43 execute -vvv
+          tmt run -a provision -h virtual -c system -i fedora:43 execute -vvv plans --name '/plans/${{ matrix.plan }}$'
+
+      - name: Upload tmt artifacts
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: tmt-run-${{ matrix.plan }}
+          path: /var/tmp/tmt/run*
+          if-no-files-found: ignore
