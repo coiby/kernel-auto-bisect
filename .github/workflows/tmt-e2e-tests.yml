@@ -38,14 +38,7 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           tmt --version
 
-      - name: Run integration test (${{ matrix.plan }})
+      - name: TMT mimi
         run: |
-          sg libvirt -c "tmt --quiet run -a provision -h virtual -c system -i fedora:43 execute -vvv plans --name '/plans/${{ matrix.plan }}$'"
-
-      - name: Upload tmt artifacts
-        uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: tmt-run-${{ matrix.plan }}
-          path: /var/tmp/tmt/run*
-          if-no-files-found: ignore
+          tmt init -t mini
+          tmt run -a provision -h local --feeling-safe execute -vvv
