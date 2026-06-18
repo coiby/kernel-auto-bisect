@@ -14,6 +14,9 @@ jobs:
   #
   tmt-run:
     runs-on: ubuntu-latest
+    container:
+      image: quay.io/fedora/fedora:latest
+      options: "--privileged -v /dev:/dev"
     strategy:
       fail-fast: false
       matrix:
@@ -22,25 +25,16 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Install libvirt + QEMU
+      - name: Install tmt
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients libvirt-dev pkg-config genisoimage python3-libvirt
-          sudo usermod -aG libvirt $USER
-          sudo systemctl start libvirtd
+          dnf install tmt+provision-virtual -yq
+          systemctl start libvirtd
           # verify KVM is available
           test -e /dev/kvm && echo "KVM OK" || echo "WARNING: /dev/kvm missing"
-          sudo virsh list --all
-
-      - name: Install tmt + testcloud
-        run: |
-          pip install --user tmt testcloud
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          tmt --version
+          virsh list --all
 
       - name: TMT mimi
         run: |
           mkdir /tmp/test_tmt && cd /tmp/test_tmt
           tmt init -t mini
-          newgrp libvirt
           tmt run -a provision -h virtual -c system -i fedora:43 execute -vvv
