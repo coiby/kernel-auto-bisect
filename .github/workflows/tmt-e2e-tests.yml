@@ -41,4 +41,4 @@ jobs:
       - name: TMT mimi
         run: |
           tmt init -t mini
-          tmt run -a provision -h local --feeling-safe execute -vvv
+          sg libvirt -c "tmt run -a provision -h virtual -c system -i fedora:43 execute -vvv"
