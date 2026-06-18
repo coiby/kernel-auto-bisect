@@ -34,11 +34,13 @@ jobs:
 
       - name: Install tmt + testcloud
         run: |
-          sudo pip install tmt testcloud
+          pip install --user tmt testcloud
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           tmt --version
 
       - name: TMT mimi
         run: |
           mkdir /tmp/test_tmt && cd /tmp/test_tmt
           tmt init -t mini
-          sudo tmt run -a provision -h virtual -c system -i fedora:43 execute -vvv
+          newgrp libvirt
+          tmt run -a provision -h virtual -c system -i fedora:43 execute -vvv
