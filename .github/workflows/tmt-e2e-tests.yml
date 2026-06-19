@@ -1,0 +1,46 @@
+name: KAB tmt e2e tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # ── Full e2e tests  ────
+  #
+  # Uses GitHub-hosted runners with nested KVM. Each plan provisions
+  # two Fedora VMs via testcloud and runs the bisection end-to-end.
+  #
+  tmt-run:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        plan: [criu]
+    timeout-minutes: 480
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install libvirt + QEMU
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients libvirt-dev pkg-config genisoimage python3-libvirt
+          sudo usermod -aG libvirt $USER
+          sudo systemctl start libvirtd
+          # verify KVM is available
+          test -e /dev/kvm && echo "KVM OK" || echo "WARNING: /dev/kvm missing"
+          sudo virsh list --all
+
+      - name: Install tmt + testcloud
+        run: |
+          pip install --user tmt testcloud
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          tmt --version
+
+      - name: TMT mimi
+        run: |
+          mkdir /tmp/test_tmt && cd /tmp/test_tmt
+          tmt init -t mini
+          #newgrp libvirt
+          sg libvirt -c "tmt run -a provision -h virtual -c system -i fedora:43 execute -vvv"
