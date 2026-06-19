@@ -42,5 +42,5 @@ jobs:
         run: |
           mkdir /tmp/test_tmt && cd /tmp/test_tmt
           tmt init -t mini
-          newgrp libvirt
-          tmt run -a provision -h virtual -c system -i fedora:43 execute -vvv
+          #newgrp libvirt
+          sg libvirt -c "tmt run -a provision -h virtual -c system -i fedora:43 execute -vvv"
