@@ -14,6 +14,9 @@ jobs:
   #
   tmt-run:
     runs-on: ubuntu-latest
+    container:
+      image: quay.io/fedora/fedora:latest
+      options: "--privileged -v /dev:/dev --volume /sys/fs/cgroup:/sys/fs/cgroup:rw --cgroupns=host"
     strategy:
       fail-fast: false
       matrix:
@@ -22,25 +25,21 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Install libvirt + QEMU
+      - name: Install tmt and start libvirtd
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients libvirt-dev pkg-config genisoimage python3-libvirt
-          sudo usermod -aG libvirt $USER
-          sudo systemctl start libvirtd
+          dnf install tmt+provision-virtual -yq
+          virtlogd -d
+          libvirtd -d
           # verify KVM is available
           test -e /dev/kvm && echo "KVM OK" || echo "WARNING: /dev/kvm missing"
-          sudo virsh list --all
+          virsh list --all
 
-      - name: Install tmt + testcloud
-        run: |
-          pip install --user tmt testcloud
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          tmt --version
 
       - name: Run e2e test (${{ matrix.plan }})
         run: |
-          sg libvirt -c "tmt run -a provision -h virtual -c system -i fedora:43 execute -vvv plans --name '/plans/${{ matrix.plan }}$'"
+          # "-B finish" to skip shutting down KVM guests thus to bypass "libvirt:  error : Failed to terminate process with SIGKILL: Device or resource busy" e.g.
+          # https://github.com/coiby/kernel-auto-bisect/actions/runs/27753332468/job/82108959294
+          tmt run -B finish provision -h virtual -c system -i fedora:43 execute -vvv plans --name '/plans/${{ matrix.plan }}$'
 
       - name: Upload tmt artifacts
         uses: actions/upload-artifact@v7
