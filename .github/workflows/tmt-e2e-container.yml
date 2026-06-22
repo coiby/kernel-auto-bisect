@@ -1,0 +1,41 @@
+name: Build tmt e2e container
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/containers/tmt-e2e/**
+      - .github/workflows/tmt-e2e-container.yml
+      - tests/kab_criu/test.sh
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository }}-tmt-e2e
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish image
+        uses: docker/build-push-action@v6
+        with:
+          context: .github/containers/tmt-e2e
+          file: .github/containers/tmt-e2e/Containerfile
+          push: true
+          platforms: linux/amd64
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}

@@ -6,6 +6,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: read
+
 jobs:
   # ── Full e2e tests  ────
   #
@@ -15,7 +19,10 @@ jobs:
   tmt-run:
     runs-on: ubuntu-latest
     container:
-      image: quay.io/fedora/fedora:latest
+      image: ghcr.io/${{ github.repository }}-tmt-e2e:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
       options: "--privileged -v /dev:/dev --volume /sys/fs/cgroup:/sys/fs/cgroup:rw --cgroupns=host"
     strategy:
       fail-fast: false
@@ -25,21 +32,21 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Install tmt and start libvirtd
+      - name: Start libvirtd
         run: |
-          dnf install tmt+provision-virtual -yq
           virtlogd -d
           libvirtd -d
           # verify KVM is available
           test -e /dev/kvm && echo "KVM OK" || echo "WARNING: /dev/kvm missing"
           virsh list --all
+          test -s /opt/kab/images/fedora-43-kab.x86_64.qcow2
 
 
       - name: Run e2e test (${{ matrix.plan }})
         run: |
           # "-B finish" to skip shutting down KVM guests thus to bypass "libvirt:  error : Failed to terminate process with SIGKILL: Device or resource busy" e.g.
           # https://github.com/coiby/kernel-auto-bisect/actions/runs/27753332468/job/82108959294
-          tmt run -B finish provision -h virtual -c system -i fedora:43 execute -vvv plans --name '/plans/${{ matrix.plan }}$'
+          tmt run -B finish provision -h virtual -c system -i /opt/kab/images/fedora-43-kab.x86_64.qcow2 execute -vvv plans --name '/plans/${{ matrix.plan }}$'
 
       - name: Upload tmt artifacts
         uses: actions/upload-artifact@v7

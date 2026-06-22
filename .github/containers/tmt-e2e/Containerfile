@@ -1,0 +1,19 @@
+FROM quay.io/fedora/fedora:43
+
+ENV LIBGUESTFS_BACKEND=direct
+
+RUN dnf install -yq \
+        curl \
+        findutils \
+        guestfs-tools \
+        libvirt-daemon-config-network \
+        libvirt-daemon-kvm \
+        qemu-kvm \
+        rsync \
+        tmt+provision-virtual \
+        wget2-wget \
+    && dnf clean all
+
+COPY build-image.sh /usr/local/bin/build-kab-tmt-image
+RUN /usr/local/bin/build-kab-tmt-image \
+    && rm -f /usr/local/bin/build-kab-tmt-image
