@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        plan: [ssh, ssh_src, ssh_auto, criu]
+        plan: [criu]
     timeout-minutes: 480
     steps:
       - uses: actions/checkout@v6

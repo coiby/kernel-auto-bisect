@@ -94,6 +94,7 @@ if ! ssh_cmd "pgrep -f $KAB_SCRIPT" >/dev/null 2>&1 && ! ssh_cmd "ls /var/local/
 	ssh_cmd "setsid bash -x $KAB_SCRIPT </dev/null &>$XTRACE_LOG &"
 fi
 
+set -x
 # 3. Wait for result
 MAX_WAIT_TIME=600 # 10 minutes
 wait_time=0
@@ -113,7 +114,7 @@ while [[ $wait_time -lt $MAX_WAIT_TIME ]]; do
 	fi
 
 	# Rsync the remote log and print only new lines
-	rsync --timeout=20 --contimeout=10 -e "ssh ${ssh_opts[*]}" "${TARGET_HOST}:${MAIN_LOG_REMOTE}" "$MAIN_LOG_LOCAL" 2>/dev/null
+	rsync -e "ssh ${ssh_opts[*]}" "${TARGET_HOST}:${MAIN_LOG_REMOTE}" "$MAIN_LOG_LOCAL" 2>/dev/null
 	current_total=$(wc -l <"$MAIN_LOG_LOCAL" 2>/dev/null || echo 0)
 	if [[ $current_total -gt $printed_lines ]]; then
 		tail -n +$((printed_lines + 1)) "$MAIN_LOG_LOCAL"
