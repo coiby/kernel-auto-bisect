@@ -8,6 +8,7 @@ RUN dnf install -yq \
         guestfs-tools \
         libvirt-daemon-config-network \
         libvirt-daemon-kvm \
+        passt \
         qemu-kvm \
         rsync \
         tmt+provision-virtual \
