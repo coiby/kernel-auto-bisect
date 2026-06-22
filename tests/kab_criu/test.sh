@@ -18,7 +18,7 @@ TARGET_HOST="${SERVERS}"
 TMT_TEST_PLAN_ROOT=${TMT_PLAN_DATA%data}
 SERVER_SSH_KEY=${TMT_TEST_PLAN_ROOT}/provision/server/id_ecdsa
 
-ssh_opts=(-o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 -o ChannelTimeout=session=2s)
+ssh_opts=(-o StrictHostKeyChecking=accept-new -o ConnectTimeout=10)
 
 if [[ -f "$SERVER_SSH_KEY" ]]; then
 	ssh_opts+=(-o IdentitiesOnly=yes -i "$SERVER_SSH_KEY")
