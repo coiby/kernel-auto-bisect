@@ -27,6 +27,15 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Build customized Fedora image
+        run: |
+          mkdir -p .github/containers/tmt-e2e/images
+          docker run --rm --privileged \
+            -v "${PWD}/.github/containers/tmt-e2e:/workspace" \
+            -e KAB_IMAGE_DIR=/workspace/images \
+            quay.io/fedora/fedora:43 \
+            bash -lc 'dnf install -yq curl guestfs-tools passt && dnf clean all && /workspace/build-image.sh'
+
       - name: Log in to GHCR
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
