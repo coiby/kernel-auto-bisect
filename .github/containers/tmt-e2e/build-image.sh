@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+export LIBGUESTFS_BACKEND=${LIBGUESTFS_BACKEND:-direct}
+
 fedora_release=${FEDORA_RELEASE:-43}
 arch=${ARCH:-x86_64}
 image_dir=${KAB_IMAGE_DIR:-/opt/kab/images}
