@@ -7,11 +7,24 @@ fedora_release=${FEDORA_RELEASE:-43}
 arch=${ARCH:-x86_64}
 image_dir=${KAB_IMAGE_DIR:-/opt/kab/images}
 rpm_cache_dir=/tmp/kdump-bisect-rpms
+package_cache_dir=${rpm_cache_dir}/packages
 raw_image=${image_dir}/fedora-${fedora_release}-cloud.${arch}.qcow2
 custom_image=${image_dir}/fedora-${fedora_release}-kab.${arch}.qcow2
 cloud_index="https://download.fedoraproject.org/pub/fedora/linux/releases/${fedora_release}/Cloud/${arch}/images/"
+image_packages=(
+	make
+	wget2-wget
+	criu
+	cronie
+	kexec-tools
+	kdump-utils
+	rsync
+	openssh-clients
+	git
+	grubby
+)
 
-mkdir -p "${image_dir}" "${rpm_cache_dir}"
+mkdir -p "${image_dir}" "${rpm_cache_dir}" "${package_cache_dir}"
 
 if [[ -z "${FEDORA_CLOUD_IMAGE_URL:-}" ]]; then
 	image_name=$(
@@ -35,16 +48,15 @@ for version in 6.16.4 6.16.5 6.16.6 6.16.7; do
 	done
 done
 
+dnf download -y --resolve --alldeps --destdir "${package_cache_dir}" "${image_packages[@]}"
+
 cp "${raw_image}" "${custom_image}"
 
 virt-customize -a "${custom_image}" \
-	--run-command 'cp -a /etc/resolv.conf /etc/resolv.conf.kab-build || true' \
-	--run-command 'rm -f /etc/resolv.conf && printf "nameserver 10.0.2.3\n" > /etc/resolv.conf' \
-	--install make,wget2-wget,criu,cronie,kexec-tools,kdump-utils,rsync,openssh-clients,git,grubby \
 	--mkdir /var/cache/kdump-bisect-rpms \
 	--copy-in "${rpm_cache_dir}":/var/cache \
-	--run-command 'dnf clean all' \
-	--run-command 'if [ -e /etc/resolv.conf.kab-build ]; then mv -f /etc/resolv.conf.kab-build /etc/resolv.conf; fi'
+	--run-command 'dnf -y --disablerepo="*" install /var/cache/kdump-bisect-rpms/packages/*.rpm' \
+	--run-command 'dnf clean all'
 
 rm -f "${raw_image}"
 rm -rf "${rpm_cache_dir}"
