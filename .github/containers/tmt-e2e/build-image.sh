@@ -38,10 +38,13 @@ done
 cp "${raw_image}" "${custom_image}"
 
 virt-customize -a "${custom_image}" \
+	--run-command 'cp -a /etc/resolv.conf /etc/resolv.conf.kab-build || true' \
+	--run-command 'rm -f /etc/resolv.conf && printf "nameserver 10.0.2.3\n" > /etc/resolv.conf' \
 	--install make,wget2-wget,criu,cronie,kexec-tools,kdump-utils,rsync,openssh-clients,git,grubby \
 	--mkdir /var/cache/kdump-bisect-rpms \
 	--copy-in "${rpm_cache_dir}":/var/cache \
-	--run-command 'dnf clean all'
+	--run-command 'dnf clean all' \
+	--run-command 'if [ -e /etc/resolv.conf.kab-build ]; then mv -f /etc/resolv.conf.kab-build /etc/resolv.conf; fi'
 
 rm -f "${raw_image}"
 rm -rf "${rpm_cache_dir}"
