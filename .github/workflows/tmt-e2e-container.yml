@@ -34,7 +34,7 @@ jobs:
             -v "${PWD}/.github/containers/tmt-e2e:/workspace" \
             -e KAB_IMAGE_DIR=/workspace/images \
             quay.io/fedora/fedora:43 \
-            bash -lc 'dnf install -yq curl guestfs-tools passt && dnf clean all && /workspace/build-image.sh'
+            bash -lc 'dnf install -yq createrepo_c curl dnf5-plugins guestfs-tools passt && dnf clean all && /workspace/build-image.sh'
 
       - name: Log in to GHCR
         if: github.event_name != 'pull_request'
