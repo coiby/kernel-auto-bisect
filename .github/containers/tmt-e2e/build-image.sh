@@ -10,7 +10,7 @@ rpm_cache_dir=/tmp/kdump-bisect-rpms
 raw_image=${image_dir}/fedora-${fedora_release}-cloud.${arch}.qcow2
 custom_image=${image_dir}/fedora-${fedora_release}-kab.${arch}.qcow2
 cloud_index="https://download.fedoraproject.org/pub/fedora/linux/releases/${fedora_release}/Cloud/${arch}/images/"
-download_host=download.fedoraproject.org
+download_host=dl.fedoraproject.org
 image_packages=(
 	make
 	wget2-wget
