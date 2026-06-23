@@ -48,7 +48,7 @@ for version in 6.16.4 6.16.5 6.16.6 6.16.7; do
 	done
 done
 
-dnf download -y --resolve --alldeps --destdir "${package_cache_dir}" "${image_packages[@]}"
+dnf download -y --resolve --destdir "${package_cache_dir}" "${image_packages[@]}"
 
 cp "${raw_image}" "${custom_image}"
 
