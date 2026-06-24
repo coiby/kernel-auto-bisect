@@ -1,9 +1,16 @@
 name: KAB tmt e2e tests
 
 on:
-  push:
+  workflow_run:
+    workflows: [Build tmt e2e container]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "GHCR image tag to run, for example latest or a commit SHA"
+        required: false
+        default: latest
 
 permissions:
   contents: read
@@ -16,9 +23,10 @@ jobs:
   # two Fedora VMs via testcloud and runs the bisection end-to-end.
   #
   tmt-run:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/${{ github.repository }}-tmt-e2e:latest
+      image: ghcr.io/${{ github.repository }}-tmt-e2e:${{ github.event.workflow_run.head_sha || github.event.inputs.image_tag || 'latest' }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
