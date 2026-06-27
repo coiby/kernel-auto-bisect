@@ -51,9 +51,7 @@ jobs:
 
       - name: Run provision test (${{ matrix.plan }})
         run: |
-          # "-B finish" to skip shutting down KVM guests thus to bypass "libvirt:  error : Failed to terminate process with SIGKILL: Device or resource busy" e.g.
-          # https://github.com/coiby/kernel-auto-bisect/actions/runs/27753332468/job/82108959294
-          timeout 30m tmt run -B finish provision -h virtual -c system -i fedora:43 -vvv plans --name '/plans/${{ matrix.plan }}$'
+          timeout 30m tmt run --until provision provision -h virtual -c system -i fedora:43 -vvv plans --name '/plans/${{ matrix.plan }}$'
 
       - name: Upload tmt artifacts
         uses: actions/upload-artifact@v7
