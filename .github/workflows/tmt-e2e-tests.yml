@@ -53,7 +53,7 @@ jobs:
         run: |
           # "-B finish" to skip shutting down KVM guests thus to bypass "libvirt:  error : Failed to terminate process with SIGKILL: Device or resource busy" e.g.
           # https://github.com/coiby/kernel-auto-bisect/actions/runs/27753332468/job/82108959294
-          tmt run -B finish provision -h virtual -c system -i /opt/kab/images/fedora-43-kab.x86_64.qcow2 execute -vvv plans --name '/plans/${{ matrix.plan }}$'
+          tmt run -B finish provision -h virtual -c system -i fedora:43 execute -vvv plans --name '/plans/${{ matrix.plan }}$'
 
       - name: Upload tmt artifacts
         uses: actions/upload-artifact@v7
