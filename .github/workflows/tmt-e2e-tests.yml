@@ -1,0 +1,62 @@
+name: KAB tmt e2e tests
+
+on:
+  workflow_run:
+    workflows: [Build tmt e2e container]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "GHCR image tag to run, for example latest or a commit SHA"
+        required: false
+        default: latest
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  # ── Full e2e tests  ────
+  #
+  # Uses GitHub-hosted runners with nested KVM. Each plan provisions
+  # two Fedora VMs via testcloud and runs the bisection end-to-end.
+  #
+  tmt-run:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-tmt-e2e:${{ github.event.workflow_run.head_sha || github.event.inputs.image_tag || 'latest' }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+      options: "--privileged -v /dev:/dev --volume /sys/fs/cgroup:/sys/fs/cgroup:rw --cgroupns=host"
+    strategy:
+      fail-fast: false
+      matrix:
+        plan: [criu]
+    timeout-minutes: 480
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Start libvirtd
+        run: |
+          virtlogd -d
+          libvirtd -d
+          # verify KVM is available
+          test -e /dev/kvm && echo "KVM OK" || echo "WARNING: /dev/kvm missing"
+          virsh list --all
+          test -s /opt/kab/images/fedora-43-kab.x86_64.qcow2
+
+
+      - name: Run provision test (${{ matrix.plan }})
+        run: |
+          timeout 30m tmt run --until provision provision -h virtual -c system -i /opt/kab/images/fedora-43-kab.x86_64.qcow2 -vvv plans --name '/plans/${{ matrix.plan }}$'
+
+      - name: Upload tmt artifacts
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: tmt-run-${{ matrix.plan }}
+          path: /var/tmp/tmt/run*
+          if-no-files-found: ignore

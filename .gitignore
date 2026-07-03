@@ -1,3 +1,4 @@
 .gemini/
 gha-creds-*.json
 .worktrees/
+.github/containers/tmt-e2e/images/*.qcow2

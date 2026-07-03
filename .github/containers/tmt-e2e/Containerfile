@@ -1,0 +1,9 @@
+FROM quay.io/fedora/fedora:43
+
+ENV LIBGUESTFS_BACKEND=direct
+
+RUN dnf install -yq \
+        tmt+provision-virtual \
+    && dnf clean all
+
+COPY images/fedora-43-kab.x86_64.qcow2 /opt/kab/images/fedora-43-kab.x86_64.qcow2
