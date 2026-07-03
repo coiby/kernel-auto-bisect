@@ -51,7 +51,7 @@ jobs:
 
       - name: Run provision test (${{ matrix.plan }})
         run: |
-          timeout 30m tmt run --until provision provision -h virtual -c system -i fedora:43 -vvv plans --name '/plans/${{ matrix.plan }}$'
+          timeout 30m tmt run --until provision provision -h virtual -c system -i /opt/kab/images/fedora-43-kab.x86_64.qcow2 -vvv plans --name '/plans/${{ matrix.plan }}$'
 
       - name: Upload tmt artifacts
         uses: actions/upload-artifact@v7

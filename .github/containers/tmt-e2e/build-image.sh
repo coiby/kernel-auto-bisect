@@ -54,12 +54,6 @@ createrepo_c "${package_cache_dir}"
 
 cp "${raw_image}" "${custom_image}"
 
-virt-customize -a "${custom_image}" \
-	--mkdir /var/cache/kdump-bisect-rpms \
-	--copy-in "${rpm_cache_dir}":/var/cache \
-	--run-command "dnf -y --disablerepo='*' --repofrompath=kab-local,file:///var/cache/kdump-bisect-rpms/packages --setopt=kab-local.gpgcheck=0 install ${image_packages_string}" \
-	--run-command 'dnf clean all' \
-	--run-command 'rm -rf /var/cache/kdump-bisect-rpms/packages'
 
 rm -f "${raw_image}"
 rm -rf "${rpm_cache_dir}"
